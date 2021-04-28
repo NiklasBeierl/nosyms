@@ -1,3 +1,6 @@
 .venv
 venv
 data_dump/
+volouts/
+.idea/
+symbols/
