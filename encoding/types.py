@@ -1,3 +1,6 @@
+from enum import IntEnum
+
+
 def _singleton(cls):
     return cls()
 
@@ -23,22 +26,8 @@ class AtomicType:
             return f"Pointer to: {self.name}"
 
 
-class BlockType:
-    @_singleton
-    class Zero:
-        pass
-
-    @_singleton
-    class String:
-        pass
-
-    @_singleton
-    class Data:
-        pass
-
-    class Pointer:
-        def __init__(self, target: int):
-            self.target: int = target
-
-        def __repr__(self):
-            return f"Pointer to {hex(self.target)}"
+class BlockType(IntEnum):
+    Zero = 0
+    String = 1
+    Data = 2
+    Pointer = 3

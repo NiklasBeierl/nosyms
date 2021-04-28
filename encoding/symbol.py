@@ -9,14 +9,15 @@ _BASE_KIND_TO_ATOMIC = {
     "char": AtomicType.String,
     "int": AtomicType.Data,
     "float": AtomicType.Data,
-    "bool": AtomicType.Data
+    "bool": AtomicType.Data,
 }
 
 
-class AtomicEncoder:
+class SymbolEncoder:
     def __init__(self, syms):
         self.syms = syms
 
+    # TODO: Remove that entire AtomicType.Pointer-are-instances-mechanism.
     def base_type_to_atomic(self, base_type: str, pointer_name=None) -> List[AtomicType]:
         """
         Reference: volatility/schemas/schema-6.2.0.json:definitions.element_base_type
@@ -25,7 +26,7 @@ class AtomicEncoder:
         if base_type_description["kind"] == "void":
             raise Exception("Attempted to interpret void as a struct member, how did you get here?")
         if base_type == "pointer":
-            return [AtomicType.Pointer(pointer_name)] * base_type_description["size"]
+            return [AtomicType.Pointer] * base_type_description["size"]
         return [_BASE_KIND_TO_ATOMIC[base_type_description["kind"]]] * base_type_description["size"]
 
     def enum_to_atomic(self, enum: str) -> List[AtomicType]:
@@ -51,9 +52,13 @@ class AtomicEncoder:
         user_type = self.syms["user_types"][user_type]
         # TODO: user_type has a "kind" as well, do I care?
         atomic_fields = [
-            (name, description["offset"], self.type_descriptor_to_atomic(description["type"],
-                                                                         bread_crumbs=bread_crumbs))
-            for name, description in user_type["fields"].items()]
+            (
+                name,
+                description["offset"],
+                self.type_descriptor_to_atomic(description["type"], bread_crumbs=bread_crumbs),
+            )
+            for name, description in user_type["fields"].items()
+        ]
         offset_map = defaultdict(lambda: list())
         for name, offset, atoms in atomic_fields:
             atoms = atoms if type(atoms) is list else [atoms]
@@ -73,10 +78,9 @@ class AtomicEncoder:
         else:  # ["array", "bitfield", "pointer", "function", "enum"]
             return subtype["kind"]
 
-    def type_descriptor_to_atomic(self,
-                                  type_descriptor: "type_descriptor",
-                                  bread_crumbs=[]
-                                  ) -> Union[AtomicType, List[AtomicType]]:
+    def type_descriptor_to_atomic(
+        self, type_descriptor: "type_descriptor", bread_crumbs=[]
+    ) -> Union[AtomicType, List[AtomicType]]:
         """
         Reference: volatility/schemas/schema-6.2.0.json:definitions.type_descriptor
         :param type_descriptor:
