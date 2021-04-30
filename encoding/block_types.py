@@ -6,3 +6,6 @@ class BlockType(IntEnum):
     String = 1
     Data = 2
     Pointer = 3
+
+    def __str__(self):
+        return self._name_
