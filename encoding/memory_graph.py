@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Tuple, List, Iterable, Callable, NamedTuple
 
 
-class Pointer:
+class Pointer(NamedTuple):
     offset: int  # Where is the pointer?
     target: int  # Where does it point to?
 
