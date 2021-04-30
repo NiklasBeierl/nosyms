@@ -1,8 +1,8 @@
 import dgl
 import networkx as nx
 import torch as t
-from encoding.memory import MemoryEncoder
-from encoding import BlockType
+from encoding import BlockType, MemoryEncoder
+from encoding.block_types import blocks_to_tensor_truncate
 from enum import Enum
 from typing import Tuple, List, Iterable, Callable, NamedTuple
 
@@ -94,22 +94,7 @@ def _extract_adjacency(graph: nx.DiGraph, relation_type) -> Tuple[Iterable, Iter
     return tuple(zip(*relevant_edges))
 
 
-def blocks_to_tensor_truncate(blocks: List[BlockType], tensor_length: int = 100) -> t.tensor:
-    """
-    Convert list of BlockTypes to tensor of shape (tensor_length, len(BlockType)). Every row in the tensor "one-hot"
-    encodes the corresponding block in `blocks`. If `blocks` is longer than `tensor_length`, it is truncated.
-    If it is shorter, the the remaining "rows" will be all 0.
-    :param blocks: List of blocks to be encoded.
-    :param tensor_length: Length of the resulting tensor.
-    :return: tensor of shape (tensor_length, len(BlockType))
-    """
-    output = t.zeros(tensor_length, len(BlockType))
-    for i, b in enumerate(blocks[:tensor_length]):
-        output[i][b] = 1
-    return output
-
-
-def build_dgl_graph(
+def build_memory_graph(
     pointers: List[Pointer],
     memory_encoder: MemoryEncoder,
     to_nx_graph: Callable[[List[Pointer]], nx.Graph] = data_and_surrounding_pointers,
