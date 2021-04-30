@@ -19,6 +19,6 @@ task_struct_json = syms_json["user_types"]["task_struct"]
 task_struct_fields = pd.DataFrame(task_struct_json["fields"]).T.sort_values("offset")
 
 encoder = SymbolEncoder(syms_json)
-atomic_task_struct = encoder.user_type_to_atomic("task_struct")
+blocks, pointers = encoder.user_type_to_atomic("task_struct")
 
 print("Done")
