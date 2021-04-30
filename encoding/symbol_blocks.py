@@ -16,7 +16,7 @@ _BASE_KIND_TO_BLOCK = {
 
 
 def _add_pointer_dict_logic(
-    encode_func: Callable[..., List[BlockType]]
+        encode_func: Callable[..., List[BlockType]]
 ) -> Callable[..., Tuple[List[BlockType], Dict[int, "type_descriptor"]]]:
     """
     Wrap an encode function such that it returns a list of purely blocks and additionally returns a dict with the
@@ -41,7 +41,7 @@ def _add_pointer_dict_logic(
             if isinstance(block, str):
                 assert offset % self._pointer_size == 0
                 # All bytes hold the same type_descriptor
-                if len(set(blocks[offset : offset + self._pointer_size])) == 1:
+                if len(set(blocks[offset: offset + self._pointer_size])) == 1:
                     pointer_dict[offset] = json.loads(block)
                 offset += self._pointer_size
             else:
@@ -125,8 +125,10 @@ class VolatilitySymbolsEncoder:
         """
         kind = type_descriptor["kind"]
         if kind == "pointer":  # TODO: pointers can have a "base" attribute, what does it mean?
-            subtype_descriptor_str = json.dumps(type_descriptor["subtype"])
-            return [subtype_descriptor_str] * self._pointer_size
+            sub_type = type_descriptor["subtype"]
+            if sub_type["kind"] == "base" and sub_type["name"] == "void":  # Void pointers do not help with encoding
+                return [BlockType.Pointer] * self._pointer_size
+            return [json.dumps(sub_type)] * self._pointer_size
         elif kind == "function":  # We would need the ability to identify functions to further leverage that.
             return [BlockType.Pointer] * self._pointer_size
         elif kind == "enum":
