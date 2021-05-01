@@ -14,9 +14,30 @@ _BASE_KIND_TO_BLOCK = {
     "bool": BlockType.Data,
 }
 
+_JSON_DUMPABLE_TYPES = [str, bool, int, float, dict, list]
+
+
+def json_lru_cache(func: Callable) -> Callable:
+    """
+    Add lru cache to function that takes json.dump-able arguments.
+    """
+
+    @lru_cache
+    def _decode(*args, **kwargs):
+        args = [json.loads(arg) if isinstance(arg, str) else arg for arg in args]
+        kwargs = {key: json.laods(arg) if isinstance(arg, str) else arg for key, arg in kwargs.items()}
+        return func(*args, **kwargs)
+
+    def _encode(*args, **kwargs):
+        args = [json.dumps(arg) if type(arg) in _JSON_DUMPABLE_TYPES else arg for arg in args]
+        kwargs = {key: json.dumps(arg) if type(arg) in _JSON_DUMPABLE_TYPES else arg for key, arg in kwargs.items()}
+        return _decode(*args, **kwargs)
+
+    return _encode
+
 
 def _add_pointer_dict_logic(
-        encode_func: Callable[..., List[BlockType]]
+    encode_func: Callable[..., List[BlockType]]
 ) -> Callable[..., Tuple[List[BlockType], Dict[int, "type_descriptor"]]]:
     """
     Wrap an encode function such that it returns a list of purely blocks and additionally returns a dict with the
@@ -41,7 +62,7 @@ def _add_pointer_dict_logic(
             if isinstance(block, str):
                 assert offset % self._pointer_size == 0
                 # All bytes hold the same type_descriptor
-                if len(set(blocks[offset: offset + self._pointer_size])) == 1:
+                if len(set(blocks[offset : offset + self._pointer_size])) == 1:
                     pointer_dict[offset] = json.loads(block)
                 offset += self._pointer_size
             else:
@@ -117,6 +138,7 @@ class VolatilitySymbolsEncoder:
         result = [self._select_final_type(offset_map[i]) for i in range(user_type["size"])]
         return result
 
+    @json_lru_cache
     def _encode_type_descriptor(self, type_descriptor: "type_descriptor") -> List[Union[BlockType, str]]:
         """
         Encode a type_descriptor into a list of BlockTypes and a dict with its points-to relationships.
