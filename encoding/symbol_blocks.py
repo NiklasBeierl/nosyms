@@ -129,6 +129,12 @@ class VolatilitySymbolsEncoder:
             (description["offset"], self._encode_type_descriptor(description["type"]))
             for description in user_type["fields"].values()
         ]
+        if user_type["kind"] == "union":
+            length = max((len(blocks) for _, blocks in field_blocks), default=0)
+            field_blocks = [
+                (offset, blocks + [BlockType.Zero] * (length - len(blocks))) for offset, blocks in field_blocks
+            ]
+
         offset_map = defaultdict(list)
         for offset, blocks in field_blocks:
             blocks = blocks if isinstance(blocks, list) else [blocks]
