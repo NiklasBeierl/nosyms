@@ -131,6 +131,7 @@ def build_vol_symbols_graph(
         blocks, _ = symbol_encoder.encode_type_descriptor(type_descriptor)  # Only need the blocks
         blocks = blocks[data["start"] : data["end"] + 1]
         tensor = blocks_to_tensor(blocks)
+        tensor = t.flatten(tensor)
         block_data[dgl_node_ids[node]] = tensor
 
     block_data = t.stack([block_data[id] for id in range(max(block_data.keys()) + 1)])
