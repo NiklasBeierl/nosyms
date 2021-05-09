@@ -162,7 +162,9 @@ class VolatilitySymbolsEncoder:
         elif kind == "array":
             member = self._encode_type_descriptor(type_descriptor["subtype"])
             member = member if isinstance(member, list) else [member]
-            return member * type_descriptor["count"]
+            # We assume that anything with the 0-length array will have at least one member after it
+            count = type_descriptor["count"] or 1
+            return member * count
         elif kind in ["struct", "class", "union"]:  # Reference to a user type
             return self._encode_user_type(type_descriptor["name"])
         else:
