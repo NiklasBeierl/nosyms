@@ -1,7 +1,7 @@
 from collections import deque
 import json
-import sys
 from typing import Callable, List, Tuple, Dict, NamedTuple
+from warnings import warn
 import dgl
 import networkx as nx
 import torch as t
@@ -54,10 +54,7 @@ def data_and_surrounding_pointers(
             blocks, pointers = memory_encoder.encode_type_descriptor(json.loads(curr_td_str))
         except KeyError:
             # Apparently volatility symbols sometimes have type_descriptors without corresponding types.
-            print(
-                f"Undefined type encountered while encoding symbols: {curr_td_str}, see Readme for more details.",
-                file=sys.stderr,
-            )
+            warn(f"Undefined type encountered while encoding symbols: {curr_td_str}, see Readme for more details.")
             # We will drop the corresponding edges from deferred_edges later
             continue
         pointers = {offset: json.dumps(td) for offset, td in pointers.items()}
