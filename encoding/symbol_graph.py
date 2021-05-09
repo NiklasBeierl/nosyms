@@ -18,19 +18,24 @@ class NodeId(NamedTuple):
     chunk: int
 
 
-def _pointer_delimited_chunks(blocks: List[BlockType]) -> List[Tuple[int, int]]:
+def _pointer_delimited_chunks(blocks: List[BlockType], pointer_size: int) -> List[Tuple[int, int]]:
     """
     Generate list of start, end interval from list of blocks, where every pointer block marks end of the previous and
     start of the next interval.
     :param blocks: List of blocks to generate intervals from.
-    :return: List of start, end tuples with: result[i-i][1] == result[i][0]
+    :return: List of start, end tuples
     """
     result = []
     last = 0
-    for offset, block in enumerate(blocks):
+    current = 0
+    while current < len(blocks):
+        block = blocks[current]
         if block == BlockType.Pointer:
-            result.append((last, offset))
-            last = offset
+            result.append((last, current + pointer_size - 1))
+            last = current
+            current += pointer_size
+        else:
+            current += 1
     if last != (len(blocks) - 1):
         result.append((last, len(blocks) - 1))
     return result
@@ -60,7 +65,7 @@ def data_and_surrounding_pointers(
             to_encode.append(pointers[0])
 
         last_node = None
-        for start, end in _pointer_delimited_chunks(blocks):
+        for start, end in _pointer_delimited_chunks(blocks, memory_encoder.pointer_size):
             current_node = NodeId(curr_td_str, start)
             graph.add_node(current_node, start=start, end=end)
             if last_node:

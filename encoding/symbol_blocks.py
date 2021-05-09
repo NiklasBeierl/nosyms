@@ -60,11 +60,11 @@ def _add_pointer_dict_logic(
         while offset < len(blocks):
             block = blocks[offset]
             if isinstance(block, str):
-                assert offset % self._pointer_size == 0
+                assert offset % self.pointer_size == 0
                 # All bytes hold the same type_descriptor
-                if len(set(blocks[offset : offset + self._pointer_size])) == 1:
+                if len(set(blocks[offset : offset + self.pointer_size])) == 1:
                     pointer_dict[offset] = json.loads(block)
-                offset += self._pointer_size
+                offset += self.pointer_size
             else:
                 offset += 1
 
@@ -81,7 +81,7 @@ class VolatilitySymbolsEncoder:
         self.syms = syms
 
     @cached_property
-    def _pointer_size(self):
+    def pointer_size(self):
         return self.syms["base_types"]["pointer"]["size"]
 
     @staticmethod
@@ -149,10 +149,10 @@ class VolatilitySymbolsEncoder:
         if kind == "pointer":  # TODO: pointers can have a "base" attribute, what does it mean?
             sub_type = type_descriptor["subtype"]
             if sub_type["kind"] == "base" and sub_type["name"] == "void":  # Void pointers do not help with encoding
-                return [BlockType.Pointer] * self._pointer_size
-            return [json.dumps(sub_type)] * self._pointer_size
+                return [BlockType.Pointer] * self.pointer_size
+            return [json.dumps(sub_type)] * self.pointer_size
         elif kind == "function":  # We would need the ability to identify functions to further leverage that.
-            return [BlockType.Pointer] * self._pointer_size
+            return [BlockType.Pointer] * self.pointer_size
         elif kind == "enum":
             return self.encode_enum(type_descriptor["name"])
         elif kind == "base":
