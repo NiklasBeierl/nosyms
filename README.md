@@ -2,6 +2,14 @@
 
 // TODO
 
+# Setup
+
+This project uses [poetry](https://python-poetry.org/docs/) to manage its python dependencies. The most convenient way 
+to get started probably is using `pip3 install --user poetry` to install poetry "globally" and then running
+`poetry install` after `cd`ing into this projects folder. You can then use `poetry shell` to `activate` the `venv`
+poetry created and manages for this project. Wanna get out? Just run `deactivate` like in any old `venv`. :) 
+
+
 # Volatility Plugins
 ## `pointer_scan.HighmemPointerScan` 
 ... scans a memory snapshots "physical layer" for x86-64 "canonical" high mem pointers (8 byte aligned words with
