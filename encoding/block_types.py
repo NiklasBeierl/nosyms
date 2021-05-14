@@ -4,10 +4,10 @@ import torch as t
 
 
 class BlockType(IntEnum):
-    Zero = 0
-    String = 1
-    Data = 2
-    Pointer = 3
+    String = 0
+    Data = 1
+    Zero = 1  # I discovered that I basically never get zero where I expect it.
+    Pointer = 2
 
     def __str__(self):
         return self._name_
