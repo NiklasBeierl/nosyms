@@ -36,7 +36,7 @@ class MemRelations(Enum):
         return self.value
 
 
-def data_and_surrounding_pointers(pointers: List[Pointer]) -> nx.Graph:
+def data_and_surrounding_pointers(pointers: List[Pointer], pointer_size: int) -> nx.Graph:
     """
     TODO
     :param pointers:
@@ -47,9 +47,10 @@ def data_and_surrounding_pointers(pointers: List[Pointer]) -> nx.Graph:
     graph = nx.DiGraph()
     start_offset = 0
     for i, p in enumerate(sorted(pointers, key=lambda pointer: pointer.offset)):
-        nodes.append(MemSlice(i, start_offset, p.offset))
+        real_end = p.offset + pointer_size - 1  # Inclusive end, including the "end" pointer
+        nodes.append(MemSlice(i, start_offset, real_end))
         p_offset_to_node_id[p.offset] = i
-        graph.add_node(i, start=start_offset, end=p.offset)  # Inclusive end
+        graph.add_node(i, start=start_offset, end=real_end)
         if nodes:
             graph.add_edge(i, nodes[i - 1].id, type=MemRelations.FOLLOWS)
             graph.add_edge(nodes[i - 1].id, i, type=MemRelations.PRECEDS)
@@ -108,13 +109,16 @@ def build_memory_graph(
     :param blocks_to_tensor:
     :return:
     """
-    nx_g = to_nx_graph(pointers)
+    nx_g = to_nx_graph(pointers, memory_encoder.pointer_size)
     relation_types = set(nx.get_edge_attributes(nx_g, "type").values())
     dgl_graph_data = {("slice", str(t), "slice"): _extract_adjacency(nx_g, t) for t in relation_types}
     dgl_graph = dgl.heterograph(dgl_graph_data)
-    ndata = {id: memory_encoder.encode(**data) for id, data in nx_g.nodes.data()}
-    ndata = {id: blocks_to_tensor(blocks_list) for id, blocks_list in ndata.items()}
-    default = t.zeros(next(iter(ndata.values())).shape)
-    ndata = t.stack([ndata.get(id, default) for id in range(max(ndata.keys()) + 1)])
-    dgl_graph.ndata["blocks"] = ndata
+    blocks = {id: memory_encoder.encode(**data) for id, data in nx_g.nodes.data()}
+    blocks = {id: blocks_to_tensor(blocks_list) for id, blocks_list in blocks.items()}
+    blocks = t.stack([blocks[id] for id in range(len(nx_g))])
+    start = t.tensor([nx_g.nodes[id]["start"] for id in range(len(nx_g))])
+    end = t.tensor([nx_g.nodes[id]["end"] for id in range(len(nx_g))])
+    dgl_graph.ndata["blocks"] = blocks
+    dgl_graph.ndata["start"] = start
+    dgl_graph.ndata["end"] = end
     return dgl_graph

@@ -22,7 +22,8 @@ def blocks_to_tensor_truncate(blocks: List[BlockType], tensor_length: int = 100)
     :param tensor_length: Length of the resulting tensor.
     :return: tensor of shape (tensor_length, len(BlockType))
     """
-    output = t.zeros(tensor_length, len(BlockType))
+    num_ts = len(BlockType)
+    output = t.zeros(tensor_length * len(BlockType))
     for i, b in enumerate(blocks[:tensor_length]):
-        output[i][b] = 1
-    return output
+        output[i * num_ts + b] = 1
+    return output.to_sparse()

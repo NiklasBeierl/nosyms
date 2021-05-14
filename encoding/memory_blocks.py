@@ -6,7 +6,8 @@ from string import printable
 
 
 def _determine_byte_type(byte: int) -> BlockType:
-    if byte == "\0":
+
+    if byte == 0:
         return BlockType.Zero
     elif chr(byte) in printable:
         return BlockType.String
@@ -15,8 +16,9 @@ def _determine_byte_type(byte: int) -> BlockType:
 
 
 class MemoryEncoder(ABC):
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, pointer_size: int):
         self.file_path = file_path
+        self.pointer_size: int = pointer_size
 
     @property
     def mmap(self):
@@ -31,20 +33,24 @@ class MemoryEncoder(ABC):
 
 class SandwichEncoder(MemoryEncoder):
     """
-    Encodes memory between "start and end" pointers.
+    Encodes memory between "start and end". Assumes that "start" points to the first and "end"
+    to the last byte of a pointer.
     """
 
-    def __init__(self, *args, max_size=10, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.max_size = max_size
+        self._bread = [BlockType.Pointer] * self.pointer_size
 
     def encode(self, start, end):
         # TODO: What about start == 0?
-        if start + 1 == end:
-            return [BlockType.Pointer, BlockType.Pointer]
+        if start + self.pointer_size == end:
+            return [BlockType.Pointer, BlockType.Pointer] * self.pointer_size
         else:
-            encoded = [_determine_byte_type(char) for char in self.mmap[start + 1 : end]]
-            return [BlockType.Pointer] + encoded + [BlockType.Pointer]
+            encoded = [
+                _determine_byte_type(char)
+                for char in self.mmap[start + self.pointer_size : end - self.pointer_size + 1]
+            ]
+            return self._bread + encoded + self._bread
 
 
 class BallEncoder(MemoryEncoder):

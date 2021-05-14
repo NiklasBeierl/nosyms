@@ -68,11 +68,13 @@ def data_and_surrounding_pointers(
             if last_node:
                 graph.add_edge(last_node, current_node, type=MemRelations.PRECEDS)
                 graph.add_edge(current_node, last_node, type=MemRelations.FOLLOWS)
-            if end in pointers:
-                # This will also cover all the "start" of the next node
-                if pointers[end] not in did_encode and pointers[end] not in to_encode:
-                    to_encode.append(pointers[end])
-                deferred_edges.append((NodeId(pointers[end], 0), current_node, MemRelations.BELOW_POINTED_TO))
+
+            end_pointer = end - memory_encoder.pointer_size + 1
+            if end_pointer in pointers:
+                # This will also cover all the of the next node
+                if pointers[end_pointer] not in did_encode and pointers[end_pointer] not in to_encode:
+                    to_encode.append(pointers[end_pointer])
+                deferred_edges.append((NodeId(pointers[end_pointer], 0), current_node, MemRelations.BELOW_POINTED_TO))
             if start in pointers:
                 deferred_edges.append((NodeId(pointers[start], 0), current_node, MemRelations.ABOVE_POINTED_TO))
             last_node = current_node
