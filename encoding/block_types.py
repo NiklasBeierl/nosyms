@@ -1,6 +1,7 @@
 from enum import IntEnum
 from typing import List
 import torch as t
+from hyperparams import NODE_MAX_LEN
 
 
 class BlockType(IntEnum):
@@ -13,7 +14,7 @@ class BlockType(IntEnum):
         return self._name_
 
 
-def blocks_to_tensor_truncate(blocks: List[BlockType], tensor_length: int = 100) -> t.tensor:
+def blocks_to_tensor_truncate(blocks: List[BlockType], tensor_length: int = NODE_MAX_LEN) -> t.tensor:
     """
     Convert list of BlockTypes to tensor of shape (tensor_length, len(BlockType)). Every row in the tensor "one-hot"
     encodes the corresponding block in `blocks`. If `blocks` is longer than `tensor_length`, it is truncated.
