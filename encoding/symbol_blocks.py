@@ -60,8 +60,12 @@ def _add_pointer_dict_logic(
         while offset < len(blocks):
             block = blocks[offset]
             if isinstance(block, str):
-                assert offset % self.pointer_size == 0
-                # All bytes hold the same type_descriptor
+                # This happens in weird scenarios like 0-length arrays in the middle of structs
+                # I really do not know how volatility makes this shit up.
+                if offset % self.pointer_size != 0:
+                    raise ValueError(f"Misaligned pointer: {args}")
+
+                # For an unambiguous pointer we need pointer size consecutive equal type_descriptors
                 if len(set(blocks[offset : offset + self.pointer_size])) == 1:
                     pointer_dict[offset] = json.loads(block)
                 offset += self.pointer_size
