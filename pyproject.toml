@@ -15,6 +15,7 @@ networkx = "^2.5.1"
 dgl = "^0.6.1"
 torch = "^1.8.1"
 matplotlib = {version = "^3.4.1", optional = true}
+Pebble = "^4.6.1"
 
 [tool.poetry.dev-dependencies]
 black = "^21.4b1"

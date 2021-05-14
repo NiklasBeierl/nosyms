@@ -14,11 +14,6 @@ category = "dev"
 optional = false
 python-versions = ">=3.6.2"
 
-[package.extras]
-colorama = ["colorama (>=0.4.3)"]
-d = ["aiohttp (>=3.3.2)", "aiohttp-cors"]
-python2 = ["typed-ast (>=1.4.2)"]
-
 [package.dependencies]
 appdirs = "*"
 click = ">=7.1.2"
@@ -26,6 +21,11 @@ mypy-extensions = ">=0.4.3"
 pathspec = ">=0.8.1,<1"
 regex = ">=2020.1.8"
 toml = ">=0.10.1"
+
+[package.extras]
+colorama = ["colorama (>=0.4.3)"]
+d = ["aiohttp (>=3.3.2)", "aiohttp-cors"]
+python2 = ["typed-ast (>=1.4.2)"]
 
 [[package]]
 name = "certifi"
@@ -140,6 +140,9 @@ category = "main"
 optional = false
 python-versions = ">=3.6"
 
+[package.dependencies]
+decorator = ">=4.3,<5"
+
 [package.extras]
 all = ["numpy", "scipy", "pandas", "matplotlib", "pygraphviz", "pydot", "pyyaml", "lxml", "pytest"]
 gdal = ["gdal"]
@@ -152,9 +155,6 @@ pygraphviz = ["pygraphviz"]
 pytest = ["pytest"]
 pyyaml = ["pyyaml"]
 scipy = ["scipy"]
-
-[package.dependencies]
-decorator = ">=4.3,<5"
 
 [[package]]
 name = "numpy"
@@ -172,13 +172,13 @@ category = "main"
 optional = false
 python-versions = ">=3.7.1"
 
-[package.extras]
-test = ["pytest (>=5.0.1)", "pytest-xdist", "hypothesis (>=3.58)"]
-
 [package.dependencies]
 numpy = ">=1.16.5"
 python-dateutil = ">=2.7.3"
 pytz = ">=2017.3"
+
+[package.extras]
+test = ["pytest (>=5.0.1)", "pytest-xdist", "hypothesis (>=3.58)"]
 
 [[package]]
 name = "pathspec"
@@ -187,6 +187,14 @@ description = "Utility library for gitignore style pattern matching of file path
 category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+
+[[package]]
+name = "pebble"
+version = "4.6.1"
+description = "Threading and multiprocessing eye-candy."
+category = "main"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "pefile"
@@ -250,15 +258,15 @@ category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
-[package.extras]
-security = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)"]
-socks = ["PySocks (>=1.5.6,<1.5.7 || >1.5.7)", "win-inet-pton"]
-
 [package.dependencies]
 certifi = ">=2017.4.17"
 chardet = ">=3.0.2,<5"
 idna = ">=2.5,<3"
 urllib3 = ">=1.21.1,<1.27"
+
+[package.extras]
+security = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)"]
+socks = ["PySocks (>=1.5.6,!=1.5.7)", "win-inet-pton"]
 
 [[package]]
 name = "scipy"
@@ -317,7 +325,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4"
 
 [package.extras]
 secure = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "certifi", "ipaddress"]
-socks = ["PySocks (>=1.5.6,<1.5.7 || >1.5.7,<2.0)"]
+socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 brotli = ["brotlipy (>=0.6.0)"]
 
 [[package]]
@@ -329,6 +337,9 @@ optional = false
 python-versions = "*"
 develop = true
 
+[package.dependencies]
+pefile = "*"
+
 [package.extras]
 crypto = ["pycryptodome (>=3)"]
 disasm = ["capstone", "capstone-windows"]
@@ -336,17 +347,14 @@ doc = ["sphinx (>=1.8.2)", "sphinx_autodoc_typehints (>=1.4.0)", "sphinx-rtd-the
 jsonschema = ["jsonschema (>=2.3.0)"]
 yara = ["yara-python (>=3.8.0)"]
 
-[package.dependencies]
-pefile = "*"
-
 [package.source]
-url = "../volatility3"
-reference = ""
 type = "directory"
+url = "../volatility3"
 
 [metadata]
+lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "95f4b8464d62c47dd4975d8f7548be6ec99b5fb335e63c1da8dcbfe841d79022"
+content-hash = "419fc9e37500768f42fa70c60cec9a4e2f883311bedba91879e25f8c8144685b"
 
 [metadata.files]
 appdirs = [
@@ -508,6 +516,10 @@ pandas = [
 pathspec = [
     {file = "pathspec-0.8.1-py2.py3-none-any.whl", hash = "sha256:aa0cb481c4041bf52ffa7b0d8fa6cd3e88a2ca4879c533c9153882ee2556790d"},
     {file = "pathspec-0.8.1.tar.gz", hash = "sha256:86379d6b86d75816baba717e64b1a3a3469deb93bb76d613c9ce79edc5cb68fd"},
+]
+pebble = [
+    {file = "Pebble-4.6.1-py2.py3-none-any.whl", hash = "sha256:556de0f4c65f943b73ba85ab4621f18000864d42a9d562c470ce7bf396d96424"},
+    {file = "Pebble-4.6.1.tar.gz", hash = "sha256:b0abdc8830c21307038d63454584f71c2943e542e4e9d4c86d67aebc06c3519b"},
 ]
 pefile = [
     {file = "pefile-2019.4.18.tar.gz", hash = "sha256:a5d6e8305c6b210849b47a6174ddf9c452b2888340b8177874b862ba6c207645"},
