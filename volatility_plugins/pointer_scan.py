@@ -1,13 +1,14 @@
 import struct
 import csv
-from typing import List
+import re
+from typing import List, Generator
 from volatility3.framework import renderers, interfaces, layers
 from volatility3.framework.configuration import requirements
 from volatility3.framework.interfaces import plugins
 from volatility3.framework.interfaces.configuration import path_join as join
 from volatility3.framework.exceptions import InvalidAddressException
 from volatility3.framework.layers.intel import Intel32e
-from volatility3.framework.layers.scanners import RegExScanner
+from volatility3.framework.interfaces.layers import ScannerInterface
 from volatility3.cli import PrintedProgress
 
 COLUMNS = [
@@ -20,9 +21,26 @@ COLUMNS = [
 DEFAULT_DTB_ADDR = 0x888000000000
 
 # Canonical 64 bit "high mem" pointers
-POINTER_PATTERN = b".{5}[\x80-\xFF]\xFF\xFF"
+# Using the infamous lookahead and zero-length capture to get overlapping matches.
+# https://stackoverflow.com/questions/5616822/python-regex-find-all-overlapping-matches
+HIGHMEM_POINTER_PATTERN = re.compile(b"(?=(.{5}[\x80-\xFF]\xFF\xFF))", flags=re.DOTALL)
+POINTER_SIZE = 8
 CSV_SEP = ","
 CSV_COLUMNS = ["offset", "virtual", "physical"]
+
+
+class HighMemPointerScanner(ScannerInterface):
+    """
+    Looks for "high mem" pointers. (8 byte aligned little endian ints with bit 63 to 48 set to 1.)
+    """
+
+    thread_safe = True
+
+    def __call__(self, data: bytes, data_offset: int) -> Generator[int, None, None]:
+        for match in HIGHMEM_POINTER_PATTERN.finditer(data):
+            offset = match.start(1)
+            if offset < self.chunk_size and offset % POINTER_SIZE == 0:
+                yield offset + data_offset
 
 
 class HighmemPointerScan(plugins.PluginInterface):
@@ -71,7 +89,7 @@ class HighmemPointerScan(plugins.PluginInterface):
         results = []
         for offset in layer.scan(
             context=self.context,
-            scanner=RegExScanner(POINTER_PATTERN),
+            scanner=HighMemPointerScanner(),
             progress_callback=PrintedProgress(),
         ):
             address = struct.unpack("<Q", layer.read(offset, 8))[0]
