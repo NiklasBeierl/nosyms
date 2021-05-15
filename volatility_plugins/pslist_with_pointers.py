@@ -4,15 +4,15 @@
 
 from typing import Callable, Iterable, List, Any
 
-from volatility.framework import renderers, interfaces, contexts
-from volatility.framework.configuration import requirements
-from volatility.framework.objects import utility
+from volatility3.framework import renderers, interfaces, contexts
+from volatility3.framework.configuration import requirements
+from volatility3.framework.objects import utility
 
 
 class PsListWithPointers(interfaces.plugins.PluginInterface):
     """Lists the processes present in a particular linux memory image."""
 
-    _required_framework_version = (2, 0, 0)
+    _required_framework_version = (1, 0, 0)
 
     _version = (1, 0, 0)
 

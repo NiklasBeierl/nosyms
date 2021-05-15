@@ -1,14 +1,14 @@
 import struct
 import csv
 from typing import List
-from volatility.framework import renderers, interfaces, layers
-from volatility.framework.configuration import requirements
-from volatility.framework.interfaces import plugins
-from volatility.framework.interfaces.configuration import path_join as join
-from volatility.framework.exceptions import InvalidAddressException
-from volatility.framework.layers.intel import Intel32e
-from volatility.framework.layers.scanners import RegExScanner
-from volatility.cli import PrintedProgress
+from volatility3.framework import renderers, interfaces, layers
+from volatility3.framework.configuration import requirements
+from volatility3.framework.interfaces import plugins
+from volatility3.framework.interfaces.configuration import path_join as join
+from volatility3.framework.exceptions import InvalidAddressException
+from volatility3.framework.layers.intel import Intel32e
+from volatility3.framework.layers.scanners import RegExScanner
+from volatility3.cli import PrintedProgress
 
 COLUMNS = [
     (
@@ -26,7 +26,7 @@ CSV_COLUMNS = ["offset", "virtual", "physical"]
 
 
 class HighmemPointerScan(plugins.PluginInterface):
-    _required_framework_version = (2, 0, 0)
+    _required_framework_version = (1, 0, 0)
 
     @classmethod
     def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
