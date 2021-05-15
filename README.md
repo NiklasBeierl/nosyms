@@ -3,6 +3,8 @@
 // TODO
 
 # Setup
+> Note: You do **not** need to set up the dependencies of this project to use the volatility3 plugins! A working
+installation of [volatility3](https://github.com/volatilityfoundation/volatility3) is sufficient.
 
 This project uses [poetry](https://python-poetry.org/docs/) to manage its python dependencies. The most convenient way 
 to get started probably is using `pip3 install --user poetry` to install poetry "globally" and then running
@@ -10,7 +12,7 @@ to get started probably is using `pip3 install --user poetry` to install poetry 
 poetry created and manages for this project. Wanna get out? Just run `deactivate` like in any old `venv`. :) 
 
 
-# Volatility Plugins
+# Volatility3 Plugins
 ## `pointer_scan.HighmemPointerScan` 
 ... scans a memory snapshots "physical layer" for x86-64 "canonical" high mem pointers (8 byte aligned words with
 bits 63-48 set to `1`). Then tries to translate them to a physical address. See 
