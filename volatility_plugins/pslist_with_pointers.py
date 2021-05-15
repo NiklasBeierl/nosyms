@@ -100,6 +100,11 @@ class PsListWithPointers(interfaces.plugins.PluginInterface):
 
         init_task = vmlinux.object_from_symbol(symbol_name="init_task")
 
+        # This might have to be removed depending on the outcome of
+        # https://github.com/volatilityfoundation/volatility3/issues/501
+        if not filter_func(init_task):
+            yield init_task
+
         for task in init_task.tasks:
             if not filter_func(task):
                 yield task
