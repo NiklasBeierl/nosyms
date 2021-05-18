@@ -109,7 +109,7 @@ class VolatilitySymbolsEncoder:
         """
         base_type_description = self.syms["base_types"][base_type_name]
         if base_type_description["kind"] == "void":
-            raise Exception("Attempted to interpret void as a struct member, how did you get here?")
+            raise ValueError("Attempted to interpret void as a struct member, how did you get here?")
         return [_BASE_KIND_TO_BLOCK[base_type_description["kind"]]] * base_type_description["size"]
 
     @lru_cache
@@ -158,11 +158,12 @@ class VolatilitySymbolsEncoder:
         kind = type_descriptor["kind"]
         if kind == "pointer":  # TODO: pointers can have a "base" attribute, what does it mean?
             sub_type = type_descriptor["subtype"]
-            if sub_type["kind"] == "base" and sub_type["name"] == "void":  # Void pointers do not help with encoding
+            st_kind = sub_type["kind"]  # Void and function pointers do not help with encoding
+            if (st_kind == "base" and sub_type["name"] == "void") or st_kind == "function":
                 return [BlockType.Pointer] * self.pointer_size
             return [json.dumps(sub_type)] * self.pointer_size
-        elif kind == "function":  # We would need the ability to identify functions to further leverage that.
-            return [BlockType.Pointer] * self.pointer_size
+        elif kind == "function":
+            raise ValueError("Attempted to encode function as a struct member, how did you get here?")
         elif kind == "enum":
             return self.encode_enum(type_descriptor["name"])
         elif kind == "base":
