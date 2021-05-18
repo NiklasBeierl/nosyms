@@ -5,7 +5,7 @@ from hyperparams import NODE_MAX_LEN
 
 
 class BlockType(IntEnum):
-    String = 0
+    String = 3
     Data = 1
     Zero = 1  # I discovered that I basically never get zero where I expect it.
     Pointer = 2
