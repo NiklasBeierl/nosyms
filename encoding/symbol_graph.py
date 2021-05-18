@@ -1,21 +1,16 @@
 from collections import deque
 import json
-from typing import Callable, List, Tuple, Dict, NamedTuple
+from typing import Callable, List, Tuple, Dict
 from warnings import warn
 import dgl
 import networkx as nx
 import torch as t
-from encoding import BlockType, VolatilitySymbolsEncoder
+from encoding import BlockType, VolatilitySymbolsEncoder, SymbolNodeId
 from encoding.block_types import blocks_to_tensor_truncate
 
 # TODO: This import is not pretty, MemRelations and both data_and_surrounding_pointers functions should be grouped
 # somewhere. Maybe together with the SandwichEncoder?
 from encoding.memory_graph import MemRelations, _extract_adjacency
-
-
-class NodeId(NamedTuple):
-    type_descriptor: str
-    chunk: int
 
 
 def _pointer_delimited_chunks(blocks: List[BlockType], pointer_size: int) -> List[Tuple[int, int]]:
@@ -63,7 +58,7 @@ def data_and_surrounding_pointers(
 
         last_node = None
         for start, end in _pointer_delimited_chunks(blocks, memory_encoder.pointer_size):
-            current_node = NodeId(curr_td_str, start)
+            current_node = SymbolNodeId(curr_td_str, start)
             graph.add_node(current_node, start=start, end=end)
             if last_node:
                 graph.add_edge(last_node, current_node, type=MemRelations.PRECEDS)
@@ -74,9 +69,11 @@ def data_and_surrounding_pointers(
                 # This will also cover all the of the next node
                 if pointers[end_pointer] not in did_encode and pointers[end_pointer] not in to_encode:
                     to_encode.append(pointers[end_pointer])
-                deferred_edges.append((NodeId(pointers[end_pointer], 0), current_node, MemRelations.BELOW_POINTED_TO))
+                deferred_edges.append(
+                    (SymbolNodeId(pointers[end_pointer], 0), current_node, MemRelations.BELOW_POINTED_TO)
+                )
             if start in pointers:
-                deferred_edges.append((NodeId(pointers[start], 0), current_node, MemRelations.ABOVE_POINTED_TO))
+                deferred_edges.append((SymbolNodeId(pointers[start], 0), current_node, MemRelations.ABOVE_POINTED_TO))
             last_node = current_node
         did_encode.add(curr_td_str)
     for u, v, rel_type in deferred_edges:
@@ -86,10 +83,10 @@ def data_and_surrounding_pointers(
 
 
 def _map_out_nodes(
-    dgl_graph_data: Dict, node_labels: Dict[NodeId, int]
-) -> Tuple[Dict, Dict[NodeId, int], Dict[NodeId, int]]:
+    dgl_graph_data: Dict, node_labels: Dict[SymbolNodeId, int]
+) -> Tuple[Dict, Dict[SymbolNodeId, int], Dict[SymbolNodeId, int]]:
     new_dgl_data = {}
-    local_node_ids: Dict[NodeId, int] = {}
+    local_node_ids: Dict[SymbolNodeId, int] = {}
     new_node_labels = node_labels.copy()
     next_int_label = max(new_node_labels.values(), default=-1) + 1
     for relation, adjacency in dgl_graph_data.items():
