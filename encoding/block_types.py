@@ -14,6 +14,27 @@ class BlockType(IntEnum):
         return self._name_
 
 
+_BLOCKS_TO_INT = {
+    bt: bt.value for bt in BlockType,
+}
+_BLOCKS_TO_INT[None] = 0
+
+
+def blocks_to_tensor(blocks: List[BlockType]) -> t.tensor:
+    """
+    Turn a list of BlockTypes and `None` int a tensor where tensor[i] == list[i].value
+    and tensor[i] == 0 if list[i] == None.
+    :param blocks: List of BlockTypes to encode.
+    :return: Tensor of encoded BlockTypes.
+    """
+    # TODO: This probably has room for optimization (np.vectorize?).
+    result = t.zeros(len(blocks), dtype=t.int8)
+    for i, block in enumerate(blocks):
+        result[i] = _BLOCKS_TO_INT[block]
+    return result
+
+
+# TODO: Deprecate
 def blocks_to_tensor_truncate(blocks: List[BlockType], tensor_length: int = NODE_MAX_LEN) -> t.tensor:
     """
     Convert list of BlockTypes to tensor of shape (tensor_length, len(BlockType)). Every row in the tensor "one-hot"

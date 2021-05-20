@@ -1,4 +1,5 @@
 from collections import deque
+from collections.abc import Sequence
 import json
 from typing import Tuple, Dict, List, Set, Deque
 from warnings import warn
@@ -6,23 +7,11 @@ from bidict import bidict, frozenbidict
 import torch as t
 from dgl import DGLHeteroGraph, heterograph
 from encoding import BlockType, SymbolNodeId, GraphBuilder, MemoryEncoder, VolatilitySymbolsEncoder
-
-BALL_RADIUS = 100
-
-_BLOCKS_TO_INT = {
-    bt: bt.value for bt in BlockType,
-}
-_BLOCKS_TO_INT[None] = 0
+from encoding.block_types import blocks_to_tensor
+from hyperparams import BALL_RADIUS
 
 
-def _blocks_to_tensor(blocks: List[BlockType]) -> t.tensor:
-    result = t.zeros(len(blocks), dtype=t.int8)
-    for i, block in enumerate(blocks):
-        result[i] = _BLOCKS_TO_INT[block]
-    return result
-
-
-def _grab_chunk(blocks: t.tensor, offset: int, radius: int, pointer_size: int) -> t.tensor:
+def _grab_ball(blocks: Sequence["uint8"], offset: int, radius: int, pointer_size: int) -> t.tensor:
     size = (2 * radius) + pointer_size
     result = t.zeros(size, dtype=t.int8)
     start = offset - radius
@@ -38,6 +27,24 @@ def _grab_chunk(blocks: t.tensor, offset: int, radius: int, pointer_size: int) -
     return result
 
 
+class BallEncoder(MemoryEncoder):
+    """
+    Encodes the immediate surroundings of given offset. (Usually the offset of a pointer)
+    """
+
+    def __init__(self, *args, radius: int = BALL_RADIUS, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.radius = radius
+
+    def _grab_ball(self, blocks, offset):
+        return _grab_ball(blocks, offset, self.radius, self.pointer_size)
+
+    def encode(self, offset: int) -> t.tensor:
+        chunk = _grab_ball(self.as_numpy, offset)
+        chunk[offset : offset + self.pointer_size] = BlockType.Pointer.value
+        return chunk
+
+
 def _prepare_edges_for_dgl(
     edges: List[Tuple[SymbolNodeId, SymbolNodeId]], node_ids: Dict[SymbolNodeId, int], did_encode: Set[str]
 ):
@@ -51,8 +58,8 @@ class BallGraphBuilder(GraphBuilder):
         super(BallGraphBuilder, self).__init__(*args, **kwargs)
         self.radius = radius
 
-    def _grab_chunk(self, blocks, offset):
-        return _grab_chunk(blocks, offset, self.radius, self.pointer_size)
+    def _grab_ball(self, blocks, offset):
+        return _grab_ball(blocks, offset, self.radius, self.pointer_size)
 
     def create_type_graph(
         self, sym_encoder: VolatilitySymbolsEncoder, user_type_name: str
@@ -82,11 +89,11 @@ class BallGraphBuilder(GraphBuilder):
             # another instance of the same type
             did_encode.add(current_td)
 
-            blocks = _blocks_to_tensor(blocks)
+            blocks = blocks_to_tensor(blocks)
             pointers = {offset: json.dumps(td) for offset, td in pointers.items()}
 
             if not pointers:
-                block_data.append(self._grab_chunk(blocks, 0))
+                block_data.append(self._grab_ball(blocks, 0))
                 current_node = SymbolNodeId(current_td, 0)
                 node_ids[current_node] = len(node_ids)
                 continue
@@ -94,7 +101,7 @@ class BallGraphBuilder(GraphBuilder):
             last_node = None
             for i, pointer in enumerate(pointers.items()):
                 offset, td = pointer
-                block_data.append(self._grab_chunk(blocks, offset))
+                block_data.append(self._grab_ball(blocks, offset))
                 current_node = SymbolNodeId(current_td, i)
                 node_ids[current_node] = len(node_ids)
                 if td not in did_encode and td not in to_encode:
@@ -119,6 +126,5 @@ class BallGraphBuilder(GraphBuilder):
         graph.ndata["blocks"] = t.stack(block_data)
         return graph, frozenbidict(node_ids)
 
-    def create_snapshot_graph(self, mem_encoder: MemoryEncoder, pointers) -> DGLHeteroGraph:
+    def create_snapshot_graph(self, mem_encoder: BallEncoder, pointers) -> DGLHeteroGraph:
         self._check_encoder(mem_encoder)
-        raise NotImplementedError("TODO")

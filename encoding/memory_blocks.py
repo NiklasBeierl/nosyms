@@ -1,33 +1,51 @@
 import mmap
 from abc import ABC, abstractmethod
-from encoding import BlockType
 from typing import List
 from string import printable
+import torch as t
+import numpy as np
+from encoding import BlockType
 
 
 def _determine_byte_type(byte: int) -> BlockType:
-
-    if byte == 0:
-        return BlockType.Zero
-    elif chr(byte) in printable:
+    if chr(byte) in printable:
         return BlockType.String
     else:
         return BlockType.Data
+
+
+def _determine_byte_type_int(byte: int) -> int:
+    if chr(byte) in printable:
+        return BlockType.String.value
+    else:
+        return BlockType.Data.value
 
 
 class MemoryEncoder(ABC):
     def __init__(self, file_path: str, pointer_size: int):
         self.file_path = file_path
         self.pointer_size: int = pointer_size
+        self._as_numpy = None
+        self._mmap = None
 
     @property
     def mmap(self):
-        with open(self.file_path, "rb") as f:
-            map = mmap.mmap(f.fileno(), f.seek(0, 2), access=mmap.ACCESS_READ)
-        return map
+        if self._mmap is None:
+            with open(self.file_path, "rb") as f:
+                self._mmap = mmap.mmap(f.fileno(), f.seek(0, 2), access=mmap.ACCESS_READ)
+        return self._mmap
+
+    @property
+    def as_numpy(self) -> t.tensor:
+        if self._as_numpy is None:
+            self._as_numpy = np.zeros(len(self.mmap), dtype=t.int8)
+            # TODO: There is probably a faster way to do that.
+            for i, b in enumerate(self.mmap):
+                self._as_numpy[i] = _determine_byte_type_int(b)
+        return self._as_numpy
 
     @abstractmethod
-    def encode(self, file, offset: int) -> List[BlockType]:
+    def encode(self, *args, **kwargs) -> List[BlockType]:
         ...
 
 
@@ -51,16 +69,3 @@ class SandwichEncoder(MemoryEncoder):
                 for char in self.mmap[start + self.pointer_size : end - self.pointer_size + 1]
             ]
             return self._bread + encoded + self._bread
-
-
-class BallEncoder(MemoryEncoder):
-    """
-    Encodes the immediate surroundings of given offset. (Usually the offset of a pointer)
-    """
-
-    def __init__(self, *args, radius: int = 32, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.radius = radius
-
-    def encode(self, offset):
-        raise NotImplementedError
