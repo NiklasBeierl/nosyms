@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Tuple, Dict, Iterable
+from typing import NamedTuple, Tuple, Dict, List
 from dgl import DGLHeteroGraph
 from encoding.block_types import BlockType
 from encoding.memory_blocks import MemoryEncoder, SandwichEncoder
@@ -14,6 +14,15 @@ class SymbolNodeId(NamedTuple):
 
     type_descriptor: str
     chunk: int
+
+
+class Pointer(NamedTuple):
+    """
+    Represents physical offset and target address of a pointer.
+    """
+
+    offset: int  # Where is the pointer?
+    target: int  # Where does it point to?
 
 
 class GraphBuilder(ABC):
@@ -32,10 +41,12 @@ class GraphBuilder(ABC):
         ...
 
     @abstractmethod
-    def create_snapshot_graph(self, mem_encoder: MemoryEncoder, pointers: Iterable) -> DGLHeteroGraph:
+    def create_snapshot_graph(self, mem_encoder: MemoryEncoder, pointers: List[Pointer]) -> DGLHeteroGraph:
         ...
 
 
 from encoding.ball import BallGraphBuilder
+
+# TODO: Restructure
 from encoding.memory_graph import build_memory_graph
 from encoding.symbol_graph import build_vol_symbols_graph

@@ -1,15 +1,10 @@
 import dgl
 import networkx as nx
 import torch as t
-from encoding import BlockType, MemoryEncoder
+from encoding import BlockType, MemoryEncoder, Pointer
 from encoding.block_types import blocks_to_tensor_truncate
 from enum import Enum
 from typing import Tuple, List, Iterable, Callable, NamedTuple
-
-
-class Pointer(NamedTuple):
-    offset: int  # Where is the pointer?
-    target: int  # Where does it point to?
 
 
 class MemSlice(NamedTuple):
