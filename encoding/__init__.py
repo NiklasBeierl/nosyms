@@ -45,8 +45,6 @@ class GraphBuilder(ABC):
         ...
 
 
-from encoding.ball import BallGraphBuilder
-
 # TODO: Restructure
 from encoding.memory_graph import build_memory_graph
 from encoding.symbol_graph import build_vol_symbols_graph
