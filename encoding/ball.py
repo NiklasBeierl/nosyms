@@ -62,7 +62,7 @@ class BallGraphBuilder(GraphBuilder):
 
     def create_type_graph(
         self, sym_encoder: VolatilitySymbolsEncoder, user_type_name: str
-    ) -> Tuple[DGLHeteroGraph, frozenbidict]:
+    ) -> Tuple[DGLHeteroGraph, Dict[SymbolNodeId, int]]:
         self._check_encoder(sym_encoder)
 
         # Results

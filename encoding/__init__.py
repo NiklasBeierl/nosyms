@@ -28,7 +28,7 @@ class GraphBuilder(ABC):
     @abstractmethod
     def create_type_graph(
         self, sym_encoder: VolatilitySymbolsEncoder, user_type_name: str
-    ) -> Tuple[DGLHeteroGraph, Dict]:
+    ) -> Tuple[DGLHeteroGraph, Dict[SymbolNodeId, int]]:
         ...
 
     @abstractmethod
