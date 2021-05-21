@@ -9,13 +9,14 @@ license = "MIT"
 python = "^3.9"
 numpy = "^1.20.1"
 pandas = "^1.2.3"
-# Applied some modifications to volatility for the sake of speed
-volatility3 = { path = "../volatility3", develop = true }
 networkx = "^2.5.1"
 dgl = "^0.6.1"
 torch = "^1.8.1"
 matplotlib = {version = "^3.4.1", optional = true}
 Pebble = "^4.6.1"
+# Applied some modifications to volatility for the sake of speed
+# volatility3 = { path = "../volatility3", develop = true }
+volatility3 = "^1.0.1"
 
 [tool.poetry.dev-dependencies]
 black = "^21.4b1"
