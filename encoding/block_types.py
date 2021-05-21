@@ -14,9 +14,7 @@ class BlockType(IntEnum):
         return self._name_
 
 
-_BLOCKS_TO_INT = {
-    bt: bt.value for bt in BlockType,
-}
+_BLOCKS_TO_INT = {bt: bt.value for bt in BlockType}
 _BLOCKS_TO_INT[None] = 0
 
 
