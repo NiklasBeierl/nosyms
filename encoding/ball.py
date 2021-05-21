@@ -45,18 +45,17 @@ class BallEncoder(MemoryEncoder):
         return chunk
 
 
-def _prepare_edges_for_dgl(
-    edges: List[Tuple[SymbolNodeId, SymbolNodeId]], node_ids: Dict[SymbolNodeId, int], did_encode: Set[str]
-):
-    edges = [(u, v) for u, v in edges if u.type_descriptor in did_encode and v.type_descriptor in did_encode]
-    edges = [(node_ids[u], node_ids[v]) for u, v in edges]
-    return tuple(zip(*edges))
-
-
 class BallGraphBuilder(GraphBuilder):
     def __init__(self, *args, radius: int = BALL_RADIUS, **kwargs):
         super(BallGraphBuilder, self).__init__(*args, **kwargs)
         self.radius = radius
+
+    def _prepare_edges_for_dgl(
+        edges: List[Tuple[SymbolNodeId, SymbolNodeId]], node_ids: Dict[SymbolNodeId, int], did_encode: Set[str]
+    ):
+        edges = [(u, v) for u, v in edges if u.type_descriptor in did_encode and v.type_descriptor in did_encode]
+        edges = [(node_ids[u], node_ids[v]) for u, v in edges]
+        return tuple(zip(*edges))
 
     def _grab_ball(self, blocks, offset):
         return _grab_ball(blocks, offset, self.radius, self.pointer_size)
@@ -113,8 +112,8 @@ class BallGraphBuilder(GraphBuilder):
                     precedes_edges.append((last_node, current_node))
                 last_node = current_node
 
-        points_to_edges = _prepare_edges_for_dgl(points_to_edges, node_ids, did_encode)
-        precedes_edges = _prepare_edges_for_dgl(precedes_edges, node_ids, did_encode)
+        points_to_edges = self._prepare_edges_for_dgl(points_to_edges, node_ids, did_encode)
+        precedes_edges = self._prepare_edges_for_dgl(precedes_edges, node_ids, did_encode)
         follows_edges = precedes_edges[1], precedes_edges[0]  # You get the idea...
         graph = heterograph(
             {
