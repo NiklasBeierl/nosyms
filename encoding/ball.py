@@ -1,12 +1,17 @@
-from collections import deque
+from collections import deque, defaultdict
 from collections.abc import Sequence
+from functools import partial
 import json
 from typing import Tuple, Dict, List, Set, Deque
 from warnings import warn
+from multiprocessing import cpu_count
 from bidict import bidict, frozenbidict
 import torch as t
+import numpy as np
 from dgl import DGLHeteroGraph, heterograph
-from encoding import BlockType, SymbolNodeId, GraphBuilder, MemoryEncoder, VolatilitySymbolsEncoder
+from rbi_tree.tree import ITree
+from pebble import ProcessPool
+from encoding import BlockType, SymbolNodeId, Pointer, GraphBuilder, MemoryEncoder, VolatilitySymbolsEncoder
 from encoding.block_types import blocks_to_tensor
 from hyperparams import BALL_RADIUS
 
@@ -22,8 +27,11 @@ def _grab_ball(blocks: Sequence["uint8"], offset: int, radius: int, pointer_size
         chunk_offset = radius - offset
     if end > len(blocks):
         end = len(blocks)
+
+    if t.is_tensor(blocks):
+        blocks = blocks.numpy()
     chunk = blocks[start:end]
-    result[chunk_offset : chunk_offset + len(chunk)] = chunk
+    result[chunk_offset : chunk_offset + len(chunk)] = t.tensor(chunk)
     return result
 
 
@@ -40,9 +48,36 @@ class BallEncoder(MemoryEncoder):
         return _grab_ball(blocks, offset, self.radius, self.pointer_size)
 
     def encode(self, offset: int) -> t.tensor:
-        chunk = _grab_ball(self.as_numpy, offset)
+        chunk = self._grab_ball(self.as_numpy, offset)
         chunk[offset : offset + self.pointer_size] = BlockType.Pointer.value
         return chunk
+
+
+def _compute_pointers_shard(intervals: List[Tuple[int, int, int]], pointers: List[Pointer]):
+    chunks_tree = ITree()
+    for interval in intervals:
+        chunks_tree.insert(*interval)
+    points_to_edges = []
+    for source_id, p in pointers:
+        for _, _, target_id in chunks_tree.find_at(p.target):
+            points_to_edges.append((source_id, target_id))
+    return points_to_edges
+
+
+def _compute_pointers(intervals: List[Tuple[int, int, int]], sorted_pointers: List[Pointer]):
+    # Scatter pointers accross cores
+    cpus = cpu_count()
+    scattered_pointers = defaultdict(list)
+    for i, pointer in enumerate(sorted_pointers):
+        scattered_pointers[i % cpus].append((i, pointer))
+
+    pool = ProcessPool(cpus)
+    func = partial(_compute_pointers_shard, intervals)
+    result = pool.map(func, scattered_pointers.values())
+    result = list(result.result())
+    # Gather
+    result = [item for sublist in result for item in sublist]
+    return result
 
 
 class BallGraphBuilder(GraphBuilder):
@@ -50,6 +85,7 @@ class BallGraphBuilder(GraphBuilder):
         super(BallGraphBuilder, self).__init__(*args, **kwargs)
         self.radius = radius
 
+    @staticmethod
     def _prepare_edges_for_dgl(
         edges: List[Tuple[SymbolNodeId, SymbolNodeId]], node_ids: Dict[SymbolNodeId, int], did_encode: Set[str]
     ):
@@ -125,5 +161,32 @@ class BallGraphBuilder(GraphBuilder):
         graph.ndata["blocks"] = t.stack(block_data)
         return graph, frozenbidict(node_ids)
 
-    def create_snapshot_graph(self, mem_encoder: BallEncoder, pointers) -> DGLHeteroGraph:
+    def create_snapshot_graph(self, mem_encoder: BallEncoder, pointers: List[Pointer]) -> DGLHeteroGraph:
         self._check_encoder(mem_encoder)
+
+        # Sort pointers by their offset, ascending
+        sorted_pointers = list(sorted(pointers, key=lambda p: p.offset))
+
+        # The min and max could be replaced by something more efficient since the pointers are sorted.
+        starts = np.array([max(0, p.offset - self.radius) for p in sorted_pointers], dtype=np.int64)
+        end_offset = self.pointer_size + self.radius
+        ends = np.array([min(mem_encoder.size, p.offset + end_offset) for p in sorted_pointers], dtype=np.int64)
+
+        intervals = list(zip(starts, ends, range(len(pointers))))
+
+        points_to_edges = _compute_pointers(intervals, sorted_pointers)
+        points_to_edges = tuple(zip(*points_to_edges))
+        precedes_edges = list(range(len(pointers) - 1)), list(range(1, len(pointers)))
+        follows_edges = precedes_edges[1], precedes_edges[0]
+        graph = heterograph(
+            {
+                ("chunk", "points_to", "chunk"): points_to_edges,
+                ("chunk", "precedes", "chunk"): precedes_edges,
+                ("chunk", "follows", "chunk"): follows_edges,
+            }
+        )
+        graph.ndata["blocks"] = t.stack([mem_encoder.encode(p.offset) for p in sorted_pointers])
+        graph.ndata["pointer_offset"] = t.tensor([p.offset for p in sorted_pointers], dtype=t.int64)
+        graph.ndata["start"] = t.tensor(starts)
+        graph.ndata["end"] = t.tensor(ends)
+        return graph

@@ -1,10 +1,12 @@
 import mmap
 from abc import ABC, abstractmethod
-from typing import List
 from string import printable
+from functools import cached_property
 import torch as t
 import numpy as np
 from encoding import BlockType
+
+PRINTABLE_BYTES = printable.encode("ascii")
 
 
 def _determine_byte_type(byte: int) -> BlockType:
@@ -14,8 +16,8 @@ def _determine_byte_type(byte: int) -> BlockType:
         return BlockType.Data
 
 
-def _determine_byte_type_int(byte: int) -> int:
-    if chr(byte) in printable:
+def _determine_byte_type_int(byte: bytes) -> int:
+    if byte in PRINTABLE_BYTES:
         return BlockType.String.value
     else:
         return BlockType.Data.value
@@ -25,27 +27,26 @@ class MemoryEncoder(ABC):
     def __init__(self, file_path: str, pointer_size: int):
         self.file_path = file_path
         self.pointer_size: int = pointer_size
-        self._as_numpy = None
-        self._mmap = None
 
-    @property
+    @cached_property
+    def size(self) -> int:
+        return self.mmap.size()
+
+    @cached_property
     def mmap(self):
-        if self._mmap is None:
-            with open(self.file_path, "rb") as f:
-                self._mmap = mmap.mmap(f.fileno(), f.seek(0, 2), access=mmap.ACCESS_READ)
-        return self._mmap
+        with open(self.file_path, "rb") as f:
+            return mmap.mmap(f.fileno(), f.seek(0, 2), access=mmap.ACCESS_READ)
 
-    @property
+    @cached_property
     def as_numpy(self) -> t.tensor:
-        if self._as_numpy is None:
-            self._as_numpy = np.zeros(len(self.mmap), dtype=t.int8)
-            # TODO: There is probably a faster way to do that.
-            for i, b in enumerate(self.mmap):
-                self._as_numpy[i] = _determine_byte_type_int(b)
-        return self._as_numpy
+        as_numpy = np.zeros(self.size, dtype=np.int8)
+        # TODO: There is probably a faster way to do that.
+        for i, b in enumerate(self.mmap):
+            as_numpy[i] = _determine_byte_type_int(b)
+        return as_numpy
 
     @abstractmethod
-    def encode(self, *args, **kwargs) -> List[BlockType]:
+    def encode(self, *args, **kwargs) -> t.tensor:
         ...
 
 

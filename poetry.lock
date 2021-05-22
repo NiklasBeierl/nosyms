@@ -7,6 +7,21 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "bidict"
+version = "0.21.2"
+description = "The bidirectional mapping library for Python."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+coverage = ["coverage (<6)", "pytest-cov (<3)"]
+dev = ["setuptools-scm", "hypothesis (<6)", "py (<2)", "pytest (<7)", "pytest-benchmark (>=3.2.0,<4)", "sortedcollections (<2)", "sortedcontainers (<3)", "Sphinx (<4)", "sphinx-autodoc-typehints (<2)", "coverage (<6)", "pytest-cov (<3)", "pre-commit (<3)", "tox (<4)"]
+docs = ["Sphinx (<4)", "sphinx-autodoc-typehints (<2)"]
+precommit = ["pre-commit (<3)"]
+test = ["hypothesis (<6)", "py (<2)", "pytest (<7)", "pytest-benchmark (>=3.2.0,<4)", "sortedcollections (<2)", "sortedcontainers (<3)", "Sphinx (<4)", "sphinx-autodoc-typehints (<2)"]
+
+[[package]]
 name = "black"
 version = "21.5b1"
 description = "The uncompromising code formatter."
@@ -254,6 +269,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "rbi-tree"
+version = "0.1.3.2"
+description = "Cython-wrapped C++ red-black interval tree implementation"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "regex"
 version = "2021.4.4"
 description = "Alternative regular expression module, to replace re."
@@ -346,7 +369,6 @@ description = "Memory forensics framework"
 category = "main"
 optional = false
 python-versions = ">=3.5.3"
-develop = true
 
 [package.dependencies]
 pefile = "*"
@@ -354,24 +376,23 @@ pefile = "*"
 [package.extras]
 crypto = ["pycryptodome (>=3)"]
 disasm = ["capstone", "capstone-windows"]
-doc = ["sphinx (>=1.8.2)", "sphinx_autodoc_typehints (>=1.4.0)", "sphinx-rtd-theme (>=0.4.3)"]
+doc = ["sphinx (>=1.8.2)", "sphinx-autodoc-typehints (>=1.4.0)", "sphinx-rtd-theme (>=0.4.3)"]
 jsonschema = ["jsonschema (>=2.3.0)"]
-leechcorepyc = ["leechcorepyc (>=2.4.0)"]
 yara = ["yara-python (>=3.8.0)"]
-
-[package.source]
-type = "directory"
-url = "../volatility3"
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "b436c033c65d16cb61064f5a1976ca970234a7f02d72252db3fc97f8cf09480a"
+content-hash = "440c651e1c5b0068c9ad94bd7c55fc38790d52ba98bc3983d8b1664858f65cec"
 
 [metadata.files]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
     {file = "appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41"},
+]
+bidict = [
+    {file = "bidict-0.21.2-py2.py3-none-any.whl", hash = "sha256:929d056e8d0d9b17ceda20ba5b24ac388e2a4d39802b87f9f4d3f45ecba070bf"},
+    {file = "bidict-0.21.2.tar.gz", hash = "sha256:4fa46f7ff96dc244abfc437383d987404ae861df797e2fd5b190e233c302be09"},
 ]
 black = [
     {file = "black-21.5b1-py3-none-any.whl", hash = "sha256:8a60071a0043876a4ae96e6c69bd3a127dad2c1ca7c8083573eb82f92705d008"},
@@ -587,6 +608,9 @@ pytz = [
     {file = "pytz-2021.1-py2.py3-none-any.whl", hash = "sha256:eb10ce3e7736052ed3623d49975ce333bcd712c7bb19a58b9e2089d4057d0798"},
     {file = "pytz-2021.1.tar.gz", hash = "sha256:83a4a90894bf38e243cf052c8b58f381bfe9a7a483f6a9cab140bc7f702ac4da"},
 ]
+rbi-tree = [
+    {file = "rbi_tree-0.1.3.2.tar.gz", hash = "sha256:a5f993f1c53abb2a072d4d0548a20077a2b2b015807d7edf97468acf64241a6f"},
+]
 regex = [
     {file = "regex-2021.4.4-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:619d71c59a78b84d7f18891fe914446d07edd48dc8328c8e149cbe0929b4e000"},
     {file = "regex-2021.4.4-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:47bf5bf60cf04d72bf6055ae5927a0bd9016096bf3d742fa50d9bf9f45aa0711"},
@@ -690,4 +714,7 @@ urllib3 = [
     {file = "urllib3-1.26.4-py2.py3-none-any.whl", hash = "sha256:2f4da4594db7e1e110a944bb1b551fdf4e6c136ad42e4234131391e21eb5b0df"},
     {file = "urllib3-1.26.4.tar.gz", hash = "sha256:e7b021f7241115872f92f43c6508082facffbd1c048e3c6e2bb9c2a157e28937"},
 ]
-volatility3 = []
+volatility3 = [
+    {file = "volatility3-1.0.1-py3-none-any.whl", hash = "sha256:dadefadb6d11db3473f96c8cacd5829181a436b573a84faeb585bc4230a903da"},
+    {file = "volatility3-1.0.1.tar.gz", hash = "sha256:1bb5590eb8447c5f1243913b286899f43a8a06f647f91e796ab7ef746d721e1f"},
+]
