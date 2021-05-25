@@ -153,7 +153,7 @@ class BallGraphBuilder(GraphBuilder):
         follows_edges = precedes_edges[1], precedes_edges[0]  # You get the idea...
         graph = heterograph(
             {
-                ("chunk", "points_to", "chunk"): points_to_edges,
+                ("chunk", "pointed_to_by", "chunk"): points_to_edges[::-1],
                 ("chunk", "precedes", "chunk"): precedes_edges,
                 ("chunk", "follows", "chunk"): follows_edges,
             }
@@ -180,7 +180,7 @@ class BallGraphBuilder(GraphBuilder):
         follows_edges = precedes_edges[1], precedes_edges[0]
         graph = heterograph(
             {
-                ("chunk", "points_to", "chunk"): points_to_edges,
+                ("chunk", "pointed_to_by", "chunk"): points_to_edges[::-1],
                 ("chunk", "precedes", "chunk"): precedes_edges,
                 ("chunk", "follows", "chunk"): follows_edges,
             }
