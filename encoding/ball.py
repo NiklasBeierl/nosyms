@@ -16,7 +16,7 @@ from encoding.block_types import blocks_to_tensor
 from hyperparams import BALL_RADIUS
 
 
-def _grab_ball(blocks: Sequence["uint8"], offset: int, radius: int, pointer_size: int) -> t.tensor:
+def _grab_ball(blocks: 'Sequence["uint8"]', offset: int, radius: int, pointer_size: int) -> t.tensor:
     size = (2 * radius) + pointer_size
     result = t.zeros(size, dtype=t.int8)
     start = offset - radius
