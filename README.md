@@ -2,6 +2,16 @@
 
 // TODO
 
+# Repo / File structure:
+- `encoding`: Stuff needed to encode Memory Snapshots and Volatility Symbols into graphs
+  - Note that sandwich encoding is currently broken, I don't know yet whether I will fix it or delete it.
+- `networks`: NN related code (pytorch models)
+- `ball`: Code for experimenting with ball encoding
+  - I mostly run my code in a debugger and inspect the variables directly. I would encourage you to do the same.
+- `sandwich`: Code for experimenting with sandwich encoding 
+  - Note that sandwich encoding is currently broken, I don't know yet whether I will fix it or delete it.
+- `data_dump` / `symbols` Where I keep my memory snapshot data and vol symbols. Not part of the repo itself.
+
 # Setup
 > Note: You do **not** need to set up the dependencies of this project to use the volatility3 plugins! A working
 installation of [volatility3](https://github.com/volatilityfoundation/volatility3) is sufficient.
