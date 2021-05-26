@@ -44,6 +44,10 @@ std:  {np.std(rands)}"""
 
 batch_graph = dgl.batch([g for _, g, _ in all_data])
 
+if t.cuda.is_available():
+    # GPU can't handle that many features. :(
+    batch_graph.ndata["blocks"] = batch_graph.ndata["blocks"][:, 80:-80]
+
 # We do this here rather than in the original encoding for for storage efficiency
 blocks_one_hot = one_hot(batch_graph.ndata["blocks"].long())
 blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
@@ -59,9 +63,6 @@ index = np.array(range(batch_graph.num_nodes()))
 # TODO: Dataset is EXTREMELY unbalanced. (Subsample 0 class?)
 train_idx, test_idx = train_test_split(index, random_state=33, train_size=0.7, stratify=labels)
 
-if torch.cuda.is_available():
-    print("Going Cuda!")
-    batch_graph.ndata["blocks"] = batch_graph.ndata["blocks"].cuda()
 
 opt = t.optim.Adam(model.parameters(), lr=0.0001, weight_decay=5e-4)
 best_test_acc = 0
@@ -69,7 +70,17 @@ best_test_acc = 0
 loss_weights = t.zeros(int(labels.max()) + 1) + 1
 loss_weights[0] = 200
 
-for epoch in range(30):
+if t.cuda.is_available():
+    print("Going Cuda!")
+    dev = t.device("cuda:0")
+    batch_graph = batch_graph.to(dev)
+    labels = batch_graph.ndata[f"{TARGET_SYMBOL}_labels"]
+    model.cuda(dev)
+    train_idx = t.tensor(train_idx, device=dev)
+    test_idx = t.tensor(test_idx, device=dev)
+    loss_weights = loss_weights.cuda(dev)
+
+for epoch in range(100):
     logits = model(batch_graph)
     loss = cross_entropy(logits[train_idx], labels[train_idx].long(), weight=loss_weights)
 
