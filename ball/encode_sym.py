@@ -41,7 +41,6 @@ def encode_sym_file(sym_path):
         return (sym_path, graph, node_ids)
     except Exception as e:
         raise Exception(f"Failed to encode {TARGET_SYMBOL} from {sym_path}.") from e
-    print(f"Done encoding: {sym_path}")
 
 
 pool = ProcessPool(max_workers=cpu_count())
