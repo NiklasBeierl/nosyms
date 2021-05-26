@@ -17,6 +17,7 @@ with open("./ball-sym-data.pkl", "rb") as f:
 
 TARGET_SYMBOL = "task_struct"
 
+rands = []
 for path, graph, node_ids in all_data:
     true_labels = np.zeros(graph.num_nodes())
     for i, n in node_ids.inv.items():
@@ -32,7 +33,14 @@ for path, graph, node_ids in all_data:
         encoding_labels[i] = encodings[key]
     # Many balls end up with identical type encodings (not necessarily identical edges, tho)
     rs = rand_score(true_labels, encoding_labels)
-    print(f"Encoding rand score: {rs:.4f} {path}")
+    rands.append(rs)
+
+
+print(
+    f"""Rand score for encodings:
+mean: {np.mean(rands)}
+std:  {np.std(rands)}"""
+)
 
 batch_graph = dgl.batch([g for _, g, _ in all_data])
 
