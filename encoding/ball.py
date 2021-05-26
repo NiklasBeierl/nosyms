@@ -103,6 +103,7 @@ class BallGraphBuilder(GraphBuilder):
 
         # Results
         node_ids: Dict[SymbolNodeId, int] = bidict()
+        in_struct_offsets = []
         block_data: List[t.tensor] = []
         points_to_edges: List[Tuple[SymbolNodeId, SymbolNodeId]] = []
         precedes_edges: List[Tuple[SymbolNodeId, SymbolNodeId]] = []
@@ -131,6 +132,7 @@ class BallGraphBuilder(GraphBuilder):
                 block_data.append(self._grab_ball(blocks, 0))
                 current_node = SymbolNodeId(current_td, 0)
                 node_ids[current_node] = len(node_ids)
+                in_struct_offsets.append(0)
                 continue
 
             last_node = None
@@ -139,6 +141,7 @@ class BallGraphBuilder(GraphBuilder):
                 block_data.append(self._grab_ball(blocks, offset))
                 current_node = SymbolNodeId(current_td, i)
                 node_ids[current_node] = len(node_ids)
+                in_struct_offsets.append(offset)
                 if td not in did_encode and td not in to_encode:
                     to_encode.append(td)
 
@@ -159,6 +162,7 @@ class BallGraphBuilder(GraphBuilder):
             }
         )
         graph.ndata["blocks"] = t.stack(block_data)
+        graph.ndata["in_struct_offset"] = t.tensor(in_struct_offsets, dtype=t.int32)
         return graph, frozenbidict(node_ids)
 
     def create_snapshot_graph(self, mem_encoder: BallEncoder, pointers: List[Pointer]) -> DGLHeteroGraph:
