@@ -1,8 +1,8 @@
 import pandas as p
 import pickle
 from time import time
-from encoding.memory_graph import Pointer, build_memory_graph
-from encoding import SandwichEncoder
+from encoding.sandwich import build_memory_graph, SandwichEncoder
+from encoding import Pointer
 
 POINTER_SIZE = 8
 df = p.read_csv("./data_dump/memory_layer_nokaslr_pointers_translated.csv")

@@ -5,7 +5,7 @@ from multiprocessing import cpu_count
 from concurrent.futures import TimeoutError
 from pebble import ProcessPool
 from encoding import VolatilitySymbolsEncoder
-from encoding.symbol_graph import build_vol_symbols_graph
+from encoding.sandwich import build_vol_symbols_graph
 
 import warnings
 

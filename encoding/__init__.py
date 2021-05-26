@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import NamedTuple, Tuple, Dict, List
 from dgl import DGLHeteroGraph
 from encoding.block_types import BlockType
-from encoding.memory_blocks import MemoryEncoder, SandwichEncoder
+from encoding.memory_blocks import MemoryEncoder
 from encoding.symbol_blocks import VolatilitySymbolsEncoder
 
 
@@ -10,6 +10,7 @@ class SymbolNodeId(NamedTuple):
     """
     Identifies nodes in a symbol graph. Since we can not store string information in dgl graphs directly, functions
     building graphs return a dict mapping these node ids onto indices in the graph.
+    Example: GraphBulder.create_type_graph
     """
 
     type_descriptor: str
@@ -18,7 +19,7 @@ class SymbolNodeId(NamedTuple):
 
 class Pointer(NamedTuple):
     """
-    Represents physical offset and target address of a pointer.
+    Represents physical offset and target physical address of a pointer.
     """
 
     offset: int  # Where is the pointer?
@@ -43,8 +44,3 @@ class GraphBuilder(ABC):
     @abstractmethod
     def create_snapshot_graph(self, mem_encoder: MemoryEncoder, pointers: List[Pointer]) -> DGLHeteroGraph:
         ...
-
-
-# TODO: Restructure
-from encoding.memory_graph import build_memory_graph
-from encoding.symbol_graph import build_vol_symbols_graph
