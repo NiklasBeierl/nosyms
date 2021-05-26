@@ -37,6 +37,7 @@ def encode_sym_file(sym_path):
         ball_encoder = BallGraphBuilder()
         graph, node_ids = ball_encoder.create_type_graph(sym_encoder, TARGET_SYMBOL)
 
+        print(f"Done encoding: {sym_path}")
         return (sym_path, graph, node_ids)
     except Exception as e:
         raise Exception(f"Failed to encode {TARGET_SYMBOL} from {sym_path}.") from e
