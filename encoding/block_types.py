@@ -1,7 +1,6 @@
 from enum import IntEnum
 from typing import List
 import torch as t
-from hyperparams import NODE_MAX_LEN
 
 
 class BlockType(IntEnum):
