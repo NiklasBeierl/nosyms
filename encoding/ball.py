@@ -180,7 +180,26 @@ class BallGraphBuilder(GraphBuilder):
         graph.ndata["in_struct_offset"] = t.tensor(in_struct_offsets, dtype=t.int32)
         return graph, frozenbidict(node_ids)
 
-    def create_snapshot_graph(self, mem_encoder: BallEncoder, pointers: List[Pointer]) -> DGLHeteroGraph:
+    @staticmethod
+    def _encode_and_compress(encoder: BallEncoder, compressor: BlockCompressor, pointers: List[int]) -> t.tensor:
+        BATCH_SIZE = 1000
+        results = []
+        for i in range((len(pointers) // BATCH_SIZE) + 1):
+            start, end = i * BATCH_SIZE, min((i + 1) * BATCH_SIZE, len(pointers))
+            batch = []
+            for p in pointers[start:end]:
+                blocks = encoder.encode(p)
+                batch.append(blocks)
+            batch = t.tensor(np.stack(batch))
+            if compressor:
+                batch = compressor.compress_batch(batch)
+            results.append(batch)
+        return t.cat(results)
+
+    def create_snapshot_graph(
+        self, mem_encoder: BallEncoder, pointers: List[Pointer], compressor: BlockCompressor = None
+    ) -> DGLHeteroGraph:
+        # TODO: Check if Mem encoder has same radius as graph builder
         self._check_encoder(mem_encoder)
 
         # Sort pointers by their offset, ascending
@@ -204,7 +223,7 @@ class BallGraphBuilder(GraphBuilder):
                 ("chunk", "follows", "chunk"): follows_edges,
             }
         )
-        graph.ndata["blocks"] = t.stack([mem_encoder.encode(p.offset) for p in sorted_pointers])
+        graph.ndata["blocks"] = self._encode_and_compress(mem_encoder, compressor, [p.offset for p in sorted_pointers])
         graph.ndata["pointer_offset"] = t.tensor([p.offset for p in sorted_pointers], dtype=t.int64)
         graph.ndata["start"] = t.tensor(starts)
         graph.ndata["end"] = t.tensor(ends)

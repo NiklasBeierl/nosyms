@@ -2,12 +2,12 @@ import pickle
 import warnings
 import numpy as np
 import torch as t
-import torch.cuda
 from torch.nn.functional import cross_entropy, one_hot
 from sklearn.metrics import rand_score
 from sklearn.model_selection import train_test_split
 import dgl
 from networks.embedding import MyConvolution
+from encoding import WordCompressor
 
 warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
 warnings.filterwarnings("ignore", message="Undefined\ type\ encountered")
@@ -16,14 +16,10 @@ with open("./ball-sym-data.pkl", "rb") as f:
     all_data = pickle.load(f)
 
 TARGET_SYMBOL = "task_struct"
+BINARY_CLASSIFY = True
 
-rands = []
-for path, graph, node_ids in all_data:
-    true_labels = np.zeros(graph.num_nodes())
-    for i, n in node_ids.inv.items():
-        if TARGET_SYMBOL in n.type_descriptor:  # TODO This is not he safest check, but it works for task_struct :)
-            true_labels[i] = n.chunk
-    graph.ndata[f"{TARGET_SYMBOL}_labels"] = t.tensor(true_labels)
+
+def encoding_rand_score(graph, true_labels):
     encodings = {}
     encoding_labels = np.zeros(graph.num_nodes())
     for i, bs in enumerate(graph.ndata["blocks"]):
@@ -32,23 +28,35 @@ for path, graph, node_ids in all_data:
             encodings[key] = len(encodings)
         encoding_labels[i] = encodings[key]
     # Many balls end up with identical type encodings (not necessarily identical edges, tho)
-    rs = rand_score(true_labels, encoding_labels)
-    rands.append(rs)
+    return rand_score(true_labels, encoding_labels)
 
+
+compressor = WordCompressor()
+rands_comp = []
+rands = []
+for path, graph, node_ids in all_data:
+    true_labels = np.zeros(graph.num_nodes())
+    for i, n in node_ids.inv.items():
+        if TARGET_SYMBOL in n.type_descriptor:  # TODO This is not he safest check, but it works for task_struct :)
+            true_labels[i] = 1 if BINARY_CLASSIFY else i
+
+    graph.ndata[f"{TARGET_SYMBOL}_labels"] = t.tensor(true_labels)
+    r_score = encoding_rand_score(graph, true_labels)
+    rands.append(r_score)
+    graph.ndata["blocks"] = compressor.compress_batch(graph.ndata["blocks"])
+    r_score_compressed = encoding_rand_score(graph, true_labels)
+    rands_comp.append(r_score_compressed)
 
 print(
     f"""Rand score for encodings:
-mean: {np.mean(rands)}
-std:  {np.std(rands)}"""
+      Original:   Compressed:   
+mean: {np.mean(rands):.4f}      {np.mean(rands_comp):.4f} 
+std:  {np.std(rands):.4f}      {np.std(rands_comp):.4f}"""
 )
 
 batch_graph = dgl.batch([g for _, g, _ in all_data])
 
-if t.cuda.is_available():
-    # GPU can't handle that many features. :(
-    batch_graph.ndata["blocks"] = batch_graph.ndata["blocks"][:, 80:-80]
-
-# We do this here rather than in the original encoding for for storage efficiency
+# We do this here rather than in the original encoding for storage efficiency
 blocks_one_hot = one_hot(batch_graph.ndata["blocks"].long())
 blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
 batch_graph.ndata["blocks"] = blocks_one_hot.float()

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import NamedTuple, Tuple, Dict, List
 from dgl import DGLHeteroGraph
-from encoding.block_types import BlockType
+from encoding.block_types import BlockType, BlockCompressor, WordCompressor
 from encoding.memory_blocks import MemoryEncoder
 from encoding.symbol_blocks import VolatilitySymbolsEncoder
 
