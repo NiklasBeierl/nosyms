@@ -1,4 +1,9 @@
+import pickle
+import json
+import numpy as np
 import pandas as pd
+import torch as t
+from rbi_tree.tree import ITree
 from encoding import Pointer
 from encoding.ball import BallEncoder, BallGraphBuilder
 from encoding import WordCompressor, VolatilitySymbolsEncoder
@@ -17,9 +22,23 @@ comp = WordCompressor()
 
 mem_graph = bgb.create_snapshot_graph(encoder, pointers, comp)
 
-memgraph = bgb.create_snapshot_graph(encoder, pointers)
+chunk_tree = ITree()
+for a, b, i in zip(mem_graph.ndata["start"], mem_graph.ndata["end"], range(mem_graph.num_nodes())):
+    chunk_tree.insert(a, b, i)
 
-import pickle
+with open("../data_dump/vmlinux-5.4.0-58-generic.json") as f:
+    sym_encoder = VolatilitySymbolsEncoder(json.load(f))
+ts_def = sym_encoder.syms["user_types"]["task_struct"]
+ts_size = ts_def["size"]
+
+tasks = pd.read_csv("../data_dump/nokaslr_tasks.csv")
+task_index = np.full(mem_graph.num_nodes(), -1, dtype=np.int32)
+for pid, offset in tasks[["PID", "physical"]].itertuples(index=False):
+    for cs, ce, i in chunk_tree.find(offset, offset + ts_size):
+        # TODO: A chunk MIGHT cover two task_structs!
+        task_index[i] = pid
+
+mem_graph.ndata["pids"] = t.tensor(task_index)
 
 with open("./ball-mem-graph.pkl", "wb+") as f:
     pickle.dump(mem_graph, f)
