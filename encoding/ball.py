@@ -16,9 +16,12 @@ from encoding.block_types import blocks_to_tensor
 from hyperparams import BALL_RADIUS
 
 
-def _grab_ball(blocks: 'Sequence["uint8"]', offset: int, radius: int, pointer_size: int) -> t.tensor:
+
+def _grab_ball(blocks: np.array, offset: int, radius: int, pointer_size: int) -> np.array:
     size = (2 * radius) + pointer_size
-    result = t.zeros(size, dtype=t.int8)
+
+    # TODO: Use np.pad instead
+    result = np.zeros(size, dtype=np.int8)
     start = offset - radius
     end = offset + pointer_size + radius
     chunk_offset = 0
@@ -28,10 +31,8 @@ def _grab_ball(blocks: 'Sequence["uint8"]', offset: int, radius: int, pointer_si
     if end > len(blocks):
         end = len(blocks)
 
-    if t.is_tensor(blocks):
-        blocks = blocks.numpy()
     chunk = blocks[start:end]
-    result[chunk_offset : chunk_offset + len(chunk)] = t.tensor(chunk)
+    result[chunk_offset : chunk_offset + len(chunk)] = chunk
     return result
 
 
@@ -40,17 +41,23 @@ class BallEncoder(MemoryEncoder):
     Encodes the immediate surroundings of given offset. (Usually the offset of a pointer)
     """
 
-    def __init__(self, *args, radius: int = BALL_RADIUS, **kwargs):
+    def __init__(self, *args, pointers: List[int], radius: int = BALL_RADIUS, **kwargs):
         super().__init__(*args, **kwargs)
+        self.pointers = pointers
         self.radius = radius
 
-    def _grab_ball(self, blocks, offset):
-        return _grab_ball(blocks, offset, self.radius, self.pointer_size)
+    @cached_property
+    def as_numpy(self) -> np.array:
+        raw = np.array(self.mmap, dtype=np.int8)
+        result = np.zeros(len(raw), dtype=np.int8) + BlockType.Data.value
+        printable = ((9 <= raw) & (raw <= 13)) | ((32 <= raw) & (raw <= 126))  # Printable ascii
+        result[printable] = BlockType.String.value
+        for pointer in self.pointers:
+            result[pointer : pointer + self.pointer_size] = BlockType.Pointer.value
+        return result
 
-    def encode(self, offset: int) -> t.tensor:
-        chunk = self._grab_ball(self.as_numpy, offset)
-        chunk[offset : offset + self.pointer_size] = BlockType.Pointer.value
-        return chunk
+    def encode(self, offset: int) -> np.array:
+        return _grab_ball(self.as_numpy, offset, self.radius, self.pointer_size)
 
 
 def _compute_pointers_shard(intervals: List[Tuple[int, int, int]], pointers: List[Pointer]):
@@ -93,7 +100,7 @@ class BallGraphBuilder(GraphBuilder):
         edges = [(node_ids[u], node_ids[v]) for u, v in edges]
         return tuple(zip(*edges))
 
-    def _grab_ball(self, blocks, offset):
+    def _grab_ball(self, blocks: np.array, offset: int) -> np.array:
         return _grab_ball(blocks, offset, self.radius, self.pointer_size)
 
     def create_type_graph(
@@ -104,7 +111,7 @@ class BallGraphBuilder(GraphBuilder):
         # Results
         node_ids: Dict[SymbolNodeId, int] = bidict()
         in_struct_offsets = []
-        block_data: List[t.tensor] = []
+        block_data: List[np.array] = []
         points_to_edges: List[Tuple[SymbolNodeId, SymbolNodeId]] = []
         precedes_edges: List[Tuple[SymbolNodeId, SymbolNodeId]] = []
 
@@ -125,7 +132,7 @@ class BallGraphBuilder(GraphBuilder):
             # another instance of the same type
             did_encode.add(current_td)
 
-            blocks = blocks_to_tensor(blocks)
+            blocks: np.array = blocks_to_numpy(blocks)
             pointers = {offset: json.dumps(td) for offset, td in pointers.items()}
 
             if not pointers:
@@ -161,7 +168,7 @@ class BallGraphBuilder(GraphBuilder):
                 ("chunk", "follows", "chunk"): follows_edges,
             }
         )
-        graph.ndata["blocks"] = t.stack(block_data)
+        graph.ndata["blocks"] = t.tensor(np.stack(block_data))
         graph.ndata["in_struct_offset"] = t.tensor(in_struct_offsets, dtype=t.int32)
         return graph, frozenbidict(node_ids)
 

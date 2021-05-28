@@ -1,6 +1,7 @@
 from enum import IntEnum
 from typing import List
 import torch as t
+import numpy as np
 
 
 class BlockType(IntEnum):
@@ -17,15 +18,15 @@ _BLOCKS_TO_INT = {bt: bt.value for bt in BlockType}
 _BLOCKS_TO_INT[None] = 0
 
 
-def blocks_to_tensor(blocks: List[BlockType]) -> t.tensor:
+def blocks_to_numpy(blocks: List[BlockType]) -> np.array:
     """
-    Turn a list of BlockTypes and `None` int a tensor where tensor[i] == list[i].value
+    Turn a list of BlockTypes and `None` int a numpy array where tensor[i] == list[i].value
     and tensor[i] == 0 if list[i] == None.
     :param blocks: List of BlockTypes to encode.
-    :return: Tensor of encoded BlockTypes.
+    :return: numpy array of encoded BlockTypes.
     """
     # TODO: This probably has room for optimization (np.vectorize?).
-    result = t.zeros(len(blocks), dtype=t.int8)
+    result = np.zeros(len(blocks), dtype=np.int)
     for i, block in enumerate(blocks):
         result[i] = _BLOCKS_TO_INT[block]
     return result
