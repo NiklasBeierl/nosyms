@@ -1,8 +1,7 @@
 from collections import deque, defaultdict
-from collections.abc import Sequence
-from functools import partial
+from functools import partial, cached_property
 import json
-from typing import Tuple, Dict, List, Set, Deque
+from typing import Tuple, Dict, List, Set, Deque, Iterable
 from warnings import warn
 from multiprocessing import cpu_count
 from bidict import bidict, frozenbidict
@@ -11,8 +10,16 @@ import numpy as np
 from dgl import DGLHeteroGraph, heterograph
 from rbi_tree.tree import ITree
 from pebble import ProcessPool
-from encoding import BlockType, SymbolNodeId, Pointer, GraphBuilder, MemoryEncoder, VolatilitySymbolsEncoder
-from encoding.block_types import blocks_to_tensor
+from encoding import (
+    BlockType,
+    SymbolNodeId,
+    Pointer,
+    GraphBuilder,
+    MemoryEncoder,
+    VolatilitySymbolsEncoder,
+    BlockCompressor,
+)
+from encoding.block_types import blocks_to_numpy
 from hyperparams import BALL_RADIUS
 
 DglAdjacency = Tuple[Iterable[int], Iterable[int]]
