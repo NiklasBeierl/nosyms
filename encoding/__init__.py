@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Tuple, Dict, List
+from typing import NamedTuple, Tuple, List
+from bidict import frozenbidict
 from dgl import DGLHeteroGraph
 from encoding.block_types import BlockType, BlockCompressor, WordCompressor
 from encoding.memory_blocks import MemoryEncoder
@@ -38,7 +39,7 @@ class GraphBuilder(ABC):
     @abstractmethod
     def create_type_graph(
         self, sym_encoder: VolatilitySymbolsEncoder, user_type_name: str
-    ) -> Tuple[DGLHeteroGraph, Dict[SymbolNodeId, int]]:
+    ) -> Tuple[DGLHeteroGraph, frozenbidict[SymbolNodeId, int]]:
         ...
 
     @abstractmethod

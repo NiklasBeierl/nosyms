@@ -1,9 +1,9 @@
 from collections import deque, defaultdict
 from functools import partial, cached_property
 import json
-from typing import Tuple, Dict, List, Set, Deque, Iterable
-from warnings import warn
 from multiprocessing import cpu_count
+from typing import Tuple, List, Set, Deque, Iterable
+from warnings import warn
 from bidict import bidict, frozenbidict
 import torch as t
 import numpy as np
@@ -23,6 +23,9 @@ from encoding.block_types import blocks_to_numpy
 from hyperparams import BALL_RADIUS
 
 DglAdjacency = Tuple[Iterable[int], Iterable[int]]
+
+# Encoding and compressing memory is batched for space / time efficiency
+_ENCODE_BATCH_SIZE = 1000
 
 
 def _grab_ball(blocks: np.array, offset: int, radius: int, pointer_size: int) -> np.array:
@@ -102,7 +105,7 @@ class BallGraphBuilder(GraphBuilder):
 
     @staticmethod
     def _prepare_edges_for_dgl(
-        edges: List[Tuple[SymbolNodeId, SymbolNodeId]], node_ids: Dict[SymbolNodeId, int], did_encode: Set[str]
+        edges: List[Tuple[SymbolNodeId, SymbolNodeId]], node_ids: bidict[SymbolNodeId, int], did_encode: Set[str]
     ) -> DglAdjacency:
         edges = [(u, v) for u, v in edges if u.type_descriptor in did_encode and v.type_descriptor in did_encode]
         edges = [(node_ids[u], node_ids[v]) for u, v in edges]
@@ -113,11 +116,11 @@ class BallGraphBuilder(GraphBuilder):
 
     def create_type_graph(
         self, sym_encoder: VolatilitySymbolsEncoder, user_type_name: str
-    ) -> Tuple[DGLHeteroGraph, Dict[SymbolNodeId, int]]:
+    ) -> Tuple[DGLHeteroGraph, frozenbidict[SymbolNodeId, int]]:
         self._check_encoder(sym_encoder)
 
         # Results
-        node_ids: Dict[SymbolNodeId, int] = bidict()
+        node_ids: bidict[SymbolNodeId, int] = bidict()
         in_struct_offsets = []
         block_data: List[np.array] = []
         points_to_edges: List[Tuple[SymbolNodeId, SymbolNodeId]] = []
@@ -169,7 +172,7 @@ class BallGraphBuilder(GraphBuilder):
         points_to_edges: DglAdjacency = self._prepare_edges_for_dgl(points_to_edges, node_ids, did_encode)
         precedes_edges: DglAdjacency = self._prepare_edges_for_dgl(precedes_edges, node_ids, did_encode)
         follows_edges = precedes_edges[1], precedes_edges[0]  # You get the idea...
-        graph = heterograph(
+        graph: DGLHeteroGraph = heterograph(
             {
                 ("chunk", "pointed_to_by", "chunk"): points_to_edges[::-1],
                 ("chunk", "precedes", "chunk"): precedes_edges,
@@ -182,10 +185,9 @@ class BallGraphBuilder(GraphBuilder):
 
     @staticmethod
     def _encode_and_compress(encoder: BallEncoder, compressor: BlockCompressor, pointers: List[int]) -> t.tensor:
-        BATCH_SIZE = 1000
         results = []
-        for i in range((len(pointers) // BATCH_SIZE) + 1):
-            start, end = i * BATCH_SIZE, min((i + 1) * BATCH_SIZE, len(pointers))
+        for i in range((len(pointers) // _ENCODE_BATCH_SIZE) + 1):
+            start, end = i * _ENCODE_BATCH_SIZE, min((i + 1) * _ENCODE_BATCH_SIZE, len(pointers))
             batch = []
             for p in pointers[start:end]:
                 blocks = encoder.encode(p)
