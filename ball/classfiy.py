@@ -2,7 +2,6 @@ import pickle
 import torch as t
 import numpy as np
 import dgl.dataloading as dgldl
-from sklearn.metrics import confusion_matrix
 from torch.nn.functional import softmax
 from hyperparams import BALL_CONV_LAYERS
 from networks.utils import one_hot_with_neutral
