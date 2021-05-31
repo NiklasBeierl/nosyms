@@ -35,8 +35,8 @@ class MyConvolution(Module):
         if len(blocks) != len(self.conv_layers):
             raise ValueError(f"Len of blocks {len(blocks)} not matching num of conv layers: {len(self.conv_layers)}")
         h_dict = {"chunk": blocks[0].srcdata["blocks"]}
-        for layer, blocks in zip(self.conv_layers, blocks):
-            h_dict = layer(blocks, h_dict)
+        for layer, bs in zip(self.conv_layers, blocks):
+            h_dict = layer(bs, h_dict)
         result = h_dict["chunk"]
         for layer in self.class_layers:
             result = layer(result)
