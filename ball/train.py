@@ -68,7 +68,7 @@ labels = batch_graph.ndata[f"{TARGET_SYMBOL}_labels"]
 in_size = batch_graph.ndata["blocks"].shape[1]
 out_size = int(max(labels) + 1)
 hidden_size = int(np.median([in_size, out_size]))
-model = MyConvolution(batch_graph, in_size, in_size, out_size)
+model = MyConvolution(batch_graph, in_size, hidden_size, out_size)
 
 index = np.array(range(batch_graph.num_nodes()))
 # TODO: Dataset is EXTREMELY unbalanced. (Subsample 0 class?)
