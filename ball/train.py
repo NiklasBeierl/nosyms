@@ -71,12 +71,13 @@ index = np.array(range(batch_graph.num_nodes()))
 # TODO: Dataset is EXTREMELY unbalanced. (Subsample 0 class?)
 train_idx, test_idx = train_test_split(index, random_state=33, train_size=0.7, stratify=labels)
 
-
 opt = t.optim.Adam(model.parameters(), lr=0.0001, weight_decay=5e-4)
 best_test_acc = 0
 
-loss_weights = t.zeros(int(labels.max()) + 1) + 1
-loss_weights[0] = 200
+loss_weights = t.full((int(labels.max()) + 1,), 1, dtype=t.float)
+label_count = Counter(labels.numpy())
+loss_weights[1] = label_count[0] / label_count[1]
+
 
 if t.cuda.is_available():
     print("Going Cuda!")
