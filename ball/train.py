@@ -10,6 +10,7 @@ import dgl
 from networks.embedding import MyConvolution
 from networks.utils import one_hot_with_neutral
 from encoding import WordCompressor
+from hyperparams import EPOCHS
 
 warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
 warnings.filterwarnings("ignore", message="Undefined\ type\ encountered")
@@ -90,7 +91,7 @@ if t.cuda.is_available():
     test_idx = t.tensor(test_idx, device=dev)
     loss_weights = loss_weights.cuda(dev)
 
-for epoch in range(100):
+for epoch in range(EPOCHS):
     logits = model(batch_graph)
     loss = cross_entropy(logits[train_idx], labels[train_idx].long(), weight=loss_weights)
 
