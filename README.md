@@ -7,8 +7,10 @@
 - `networks`: NN related code (pytorch models)
 - `ball`: Code for experimenting with ball encoding
   - I mostly run my code in a debugger and inspect the variables directly. I would encourage you to do the same.
-- `data_dump` / `symbols` Where I keep my memory snapshot data and vol symbols. Not part of the repo itself.
-
+- `data_dump` / `symbols` Where I keep my memory snapshot data and volatility3 symbols. They are not checked into git. 
+  You can get the files used in my experiments from 
+  [my dropbox](https://www.dropbox.com/sh/iouddhc3zzut0xy/AACcREb-8JiESOntFIv59XjHa?dl=0).
+  
 # Setup
 > Note: You do **not** need to set up the dependencies of this project to use the volatility3 plugins! A working
 installation of [volatility3](https://github.com/volatilityfoundation/volatility3) is sufficient.
