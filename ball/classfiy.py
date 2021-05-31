@@ -3,8 +3,9 @@ import torch as t
 import numpy as np
 import dgl.dataloading as dgldl
 from sklearn.metrics import confusion_matrix
-from torch.nn.functional import one_hot, softmax
+from torch.nn.functional import softmax
 from hyperparams import BALL_CONV_LAYERS
+from networks.utils import one_hot_with_neutral
 import warnings
 
 warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
@@ -17,9 +18,7 @@ with open("./ball-mem-graph.pkl", "rb") as f:
 with open("./model.pkl", "rb") as f:
     model = pickle.load(f)
 
-print("Loaded stuff.")
-
-blocks_one_hot = one_hot(mem_graph.ndata["blocks"].long())
+blocks_one_hot = one_hot_with_neutral(mem_graph.ndata["blocks"].long())
 blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
 mem_graph.ndata["blocks"] = blocks_one_hot.float()
 

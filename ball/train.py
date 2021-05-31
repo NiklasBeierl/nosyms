@@ -1,12 +1,14 @@
 import pickle
+from collections import Counter
 import warnings
 import numpy as np
 import torch as t
-from torch.nn.functional import cross_entropy, one_hot
+from torch.nn.functional import cross_entropy
 from sklearn.metrics import rand_score
 from sklearn.model_selection import train_test_split
 import dgl
 from networks.embedding import MyConvolution
+from networks.utils import one_hot_with_neutral
 from encoding import WordCompressor
 
 warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
@@ -56,8 +58,7 @@ std:  {np.std(rands):.4f}      {np.std(rands_comp):.4f}"""
 
 batch_graph = dgl.batch([g for _, g, _ in all_data])
 
-# We do this here rather than in the original encoding for storage efficiency
-blocks_one_hot = one_hot(batch_graph.ndata["blocks"].long())
+blocks_one_hot = one_hot_with_neutral(batch_graph.ndata["blocks"].long())
 blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
 batch_graph.ndata["blocks"] = blocks_one_hot.float()
 labels = batch_graph.ndata[f"{TARGET_SYMBOL}_labels"]
