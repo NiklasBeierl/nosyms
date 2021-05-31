@@ -10,12 +10,13 @@ import dgl
 from networks.embedding import MyConvolution
 from networks.utils import one_hot_with_neutral
 from encoding import WordCompressor
-from hyperparams import EPOCHS
+from file_paths import SYM_DATA_PATH, MODEL_PATH
+from hyperparams import EPOCHS, LEARNING_RATE
 
 warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
 warnings.filterwarnings("ignore", message="Undefined\ type\ encountered")
 
-with open("./ball-sym-data.pkl", "rb") as f:
+with open(SYM_DATA_PATH, "rb") as f:
     all_data = pickle.load(f)
 
 TARGET_SYMBOL = "task_struct"
@@ -73,7 +74,7 @@ index = np.array(range(batch_graph.num_nodes()))
 # TODO: Dataset is EXTREMELY unbalanced. (Subsample 0 class?)
 train_idx, test_idx = train_test_split(index, random_state=33, train_size=0.7, stratify=labels)
 
-opt = t.optim.Adam(model.parameters(), lr=0.0001, weight_decay=5e-4)
+opt = t.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
 best_test_acc = 0
 
 loss_weights = t.full((int(labels.max()) + 1,), 1, dtype=t.float)
@@ -113,7 +114,7 @@ for epoch in range(EPOCHS):
         )
 
 
-with open("./model.pkl", "wb+") as f:
+with open(MODEL_PATH, "wb+") as f:
     pickle.dump(model, f)
 
 print("Done.")

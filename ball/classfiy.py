@@ -5,16 +5,17 @@ import dgl.dataloading as dgldl
 from torch.nn.functional import softmax
 from hyperparams import BALL_CONV_LAYERS
 from networks.utils import one_hot_with_neutral
+from file_paths import MODEL_PATH, MEM_GRAPH_PATH, RESULTS_PATH
 import warnings
 
 warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
 
 BATCH_SIZE = 3000
 
-with open("./ball-mem-graph.pkl", "rb") as f:
+with open(MEM_GRAPH_PATH, "rb") as f:
     mem_graph = pickle.load(f)
 
-with open("./model.pkl", "rb") as f:
+with open(MODEL_PATH, "rb") as f:
     model = pickle.load(f)
 
 blocks_one_hot = one_hot_with_neutral(mem_graph.ndata["blocks"].long())
@@ -43,7 +44,7 @@ for i, chunk in enumerate(loader):
         last_prec_done = perc
 
 
-with open("./results.pkl", "wb+") as f:
+with open(RESULTS_PATH, "wb+") as f:
     pickle.dump(results, f)
 
 print("Done")

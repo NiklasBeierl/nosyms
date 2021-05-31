@@ -6,6 +6,7 @@ from concurrent.futures import TimeoutError
 from pebble import ProcessPool
 from encoding import VolatilitySymbolsEncoder
 from encoding.ball import BallGraphBuilder
+from file_paths import SYM_DATA_PATH, SYMBOL_GLOB
 
 import warnings
 
@@ -15,7 +16,6 @@ warnings.filterwarnings("ignore", message="Undefined\ type\ encountered")
 ENCODE_TIMEOUT = 120
 TARGET_SYMBOL = "task_struct"
 POINTER_SIZE = 8
-SYMBOL_GLOB = "../symbols/all_syms/*.json"
 
 
 def encode_sym_file(sym_path):
@@ -64,7 +64,7 @@ if set(all_paths) != set(processed_paths):
     print(f"Failed to process {len(failed)} / {len(all_paths)} sym files: {failed}")
 
 print("Saving symbol data as pickle.")
-with open("./ball-sym-data.pkl", "wb+") as f:
+with open(SYM_DATA_PATH, "wb+") as f:
     pickle.dump(all_data, f)
 
 print("Done")
