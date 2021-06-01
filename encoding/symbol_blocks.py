@@ -89,7 +89,7 @@ class VolatilitySymbolsEncoder:
         return self.syms["base_types"]["pointer"]["size"]
 
     @staticmethod
-    def _select_final_type(blocks: List[Tuple[BlockType, str]]) -> BlockType:
+    def _select_final_type(blocks: List[BlockType]) -> BlockType:
         """
         Chooses the final block type from a list of possible ones for a given offset within a type.
         """
