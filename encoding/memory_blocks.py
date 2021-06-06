@@ -22,7 +22,7 @@ class MemoryEncoder(ABC):
     @cached_property
     def as_numpy(self) -> np.array:
         raw = np.array(self.mmap, dtype=np.int8)
-        result = np.full(len(raw), BlockType.Data.value, dtype=np.int8)
+        result = np.full(len(raw), BlockType.Unknown.value, dtype=np.int8)
         printable = ((9 <= raw) & (raw <= 13)) | ((32 <= raw) & (raw <= 126))  # Printable ascii
         result[printable] = BlockType.String.value
         return result

@@ -69,7 +69,7 @@ def _add_pointer_dict_logic(
                 if offset % self.pointer_size != 0:
                     raise ValueError(f"Misaligned pointer: {args}")
 
-                # For an unambiguous pointer we need pointer size consecutive equal type_descriptors
+                # For an unambiguous pointer we need pointer_size consecutive equal type_descriptors
                 if len(set(blocks[offset : offset + self.pointer_size])) == 1:
                     pointer_dict[offset] = json.loads(block)
                 offset += self.pointer_size
@@ -98,11 +98,11 @@ class VolatilitySymbolsEncoder:
         Chooses the final block type from a list of possible ones for a given offset within a type.
         """
         if not blocks:  # No field covered this offset, has to be padding.
-            return BlockType.Zero
+            return BlockType.Unknown
         if len(set(blocks)) == 1:  # Clear case.
             return blocks[0]
-        # Conflict, default to Data.
-        return BlockType.Data
+        # Conflict
+        return BlockType.Unknown
 
     @lru_cache
     def encode_base_type(self, base_type_name: str) -> List[BlockType]:
@@ -114,6 +114,9 @@ class VolatilitySymbolsEncoder:
 
         if base_type_name not in self.syms["base_types"]:
             raise UndefinedTypeError(f"Base type {base_type_name} not defined in symbols.")
+
+        if base_type_name == "void":
+            return [BlockType.Unknown]
 
         base_type_description = self.syms["base_types"][base_type_name]
         if base_type_description["kind"] == "void":
@@ -149,8 +152,9 @@ class VolatilitySymbolsEncoder:
         ]
         if user_type["kind"] == "union":
             length = max((len(blocks) for _, blocks in field_blocks), default=0)
-            field_blocks = [
-                (offset, blocks + [BlockType.Zero] * (length - len(blocks))) for offset, blocks in field_blocks
+            # Take blocks and unknown-pad them all to the same length.
+            field_blocks: List[Tuple[int, List[BlockType]]] = [
+                (offset, blocks + [BlockType.Unknown] * (length - len(blocks))) for offset, blocks in field_blocks
             ]
 
         offset_map = defaultdict(list)
@@ -171,13 +175,9 @@ class VolatilitySymbolsEncoder:
         """
         kind = type_descriptor["kind"]
         if kind == "pointer":  # TODO: pointers can have a "base" attribute, what does it mean?
-            sub_type = type_descriptor["subtype"]
-            st_kind = sub_type["kind"]  # Void and function pointers do not help with encoding
-            if (st_kind == "base" and sub_type["name"] == "void") or st_kind == "function":
-                return [BlockType.Pointer] * self.pointer_size
-            return [json.dumps(sub_type)] * self.pointer_size
+            return [json.dumps(type_descriptor["subtype"])] * self.pointer_size
         elif kind == "function":
-            raise ValueError("Attempted to encode function as a struct member, how did you get here?")
+            return [BlockType.Unknown]
         elif kind == "enum":
             return self.encode_enum(type_descriptor["name"])
         elif kind == "base":

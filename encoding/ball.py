@@ -28,6 +28,10 @@ DglAdjacency = Tuple[Iterable[int], Iterable[int]]
 # This representation of edges is used internally because its easier to work with at times.
 EdgeList = List[Tuple[int, int]]
 
+# This is used to to collect undefined type descriptors to make sure the corresponding error handling is not covering
+# other errors. Therefore its only relevant if you are debugging.
+_FAILED_SET = set()
+
 # Encoding and compressing memory is batched for space / time efficiency
 _ENCODE_BATCH_SIZE = 1000
 
@@ -42,8 +46,7 @@ def _edge_list_to_dgl(edges: EdgeList) -> DglAdjacency:
 def _grab_ball(blocks: np.array, offset: int, radius: int, pointer_size: int) -> np.array:
     size = (2 * radius) + pointer_size
 
-    # TODO: Use np.pad instead
-    result = np.zeros(size, dtype=np.int8)
+    result = np.full(size, BlockType.Unknown, dtype=np.int8)
     start = offset - radius
     end = offset + pointer_size + radius
     chunk_offset = 0
@@ -71,7 +74,7 @@ class BallEncoder(MemoryEncoder):
     @cached_property
     def as_numpy(self) -> np.array:
         raw = np.array(self.mmap, dtype=np.int8)
-        result = np.zeros(len(raw), dtype=np.int8) + BlockType.Data.value
+        result = np.full(len(raw), BlockType.Unknown, dtype=np.int8)
         printable = ((9 <= raw) & (raw <= 13)) | ((32 <= raw) & (raw <= 126))  # Printable ascii
         result[printable] = BlockType.String.value
         for pointer in self.pointers:
@@ -119,9 +122,8 @@ class BallGraphBuilder(GraphBuilder):
 
     @staticmethod
     def _symobl_node_edges_to_dgl(
-        edges: List[Tuple[SymbolNodeId, SymbolNodeId]], node_ids: bidict[SymbolNodeId, int], did_encode: Set[str]
+        edges: List[Tuple[SymbolNodeId, SymbolNodeId]], node_ids: bidict[SymbolNodeId, int]
     ) -> DglAdjacency:
-        edges = [(u, v) for u, v in edges if u.type_descriptor in did_encode and v.type_descriptor in did_encode]
         edges = [(node_ids[u], node_ids[v]) for u, v in edges]
         return _edge_list_to_dgl(edges)
 
@@ -150,9 +152,11 @@ class BallGraphBuilder(GraphBuilder):
                 blocks, pointers = sym_encoder.encode_type_descriptor(json.loads(current_td))
             except UndefinedTypeError:
                 # Apparently volatility symbols sometimes have type_descriptors without corresponding types.
+                _FAILED_SET.add(current_td)
                 warn(f"Undefined type encountered while encoding symbols: {current_td}, see Readme for more details.")
-                # We will drop the corresponding edges from edges later
-                continue
+                # Well, seems like we wont know.
+                blocks, pointers = [BlockType.Unknown], {}
+
             # Doing this here to prevent adding current_td to the queue again if current_td contains a pointer to
             # another instance of the same type
             did_encode.add(current_td)
@@ -169,7 +173,7 @@ class BallGraphBuilder(GraphBuilder):
 
             last_node = None
             last_offset = None
-            for i, pointer in enumerate(sorted(pointers.items(), key=lambda t: t[0])):
+            for i, pointer in enumerate(sorted(pointers.items(), key=lambda p: p[0])):
                 offset, td = pointer
                 block_data.append(self._grab_ball(blocks, offset))
                 current_node = SymbolNodeId(current_td, i)
@@ -185,8 +189,8 @@ class BallGraphBuilder(GraphBuilder):
                 last_node = current_node
                 last_offset = offset
 
-        points_to_edges: DglAdjacency = self._symobl_node_edges_to_dgl(points_to_edges, node_ids, did_encode)
-        precedes_edges: DglAdjacency = self._symobl_node_edges_to_dgl(precedes_edges, node_ids, did_encode)
+        points_to_edges: DglAdjacency = self._symobl_node_edges_to_dgl(points_to_edges, node_ids)
+        precedes_edges: DglAdjacency = self._symobl_node_edges_to_dgl(precedes_edges, node_ids)
         follows_edges = precedes_edges[1], precedes_edges[0]  # You get the idea...
         graph: DGLHeteroGraph = heterograph(
             {
@@ -223,7 +227,6 @@ class BallGraphBuilder(GraphBuilder):
             if next_offset <= prev_offset + self._max_centroid_dist:
                 result.append((i, i + 1))
             i += 1
-
         return _edge_list_to_dgl(result)
 
     def create_snapshot_graph(
