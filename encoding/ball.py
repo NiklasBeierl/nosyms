@@ -19,6 +19,7 @@ from encoding import (
     VolatilitySymbolsEncoder,
     BlockCompressor,
 )
+from encoding.symbol_blocks import UndefinedTypeError
 from encoding.block_types import blocks_to_numpy
 from hyperparams import BALL_RADIUS
 
@@ -134,7 +135,7 @@ class BallGraphBuilder(GraphBuilder):
             current_td = to_encode.pop()
             try:
                 blocks, pointers = sym_encoder.encode_type_descriptor(json.loads(current_td))
-            except KeyError:
+            except UndefinedTypeError:
                 # Apparently volatility symbols sometimes have type_descriptors without corresponding types.
                 warn(f"Undefined type encountered while encoding symbols: {current_td}, see Readme for more details.")
                 # We will drop the corresponding edges from edges later

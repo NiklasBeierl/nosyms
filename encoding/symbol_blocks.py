@@ -17,6 +17,10 @@ _BASE_KIND_TO_BLOCK = {
 _JSON_DUMPABLE_TYPES = [str, bool, int, float, dict, list]
 
 
+class UndefinedTypeError(Exception):
+    ...
+
+
 def json_lru_cache(func: Callable) -> Callable:
     """
     Add lru cache to function that takes json.dump-able arguments.
@@ -107,6 +111,10 @@ class VolatilitySymbolsEncoder:
         :param base_type_name: Name of a base type: volatility/schemas/schema-6.2.0.json:definitions.element_base_type
         :return: List of BlockTypes representing the base type.
         """
+
+        if base_type_name not in self.syms["base_types"]:
+            raise UndefinedTypeError(f"Base type {base_type_name} not defined in symbols.")
+
         base_type_description = self.syms["base_types"][base_type_name]
         if base_type_description["kind"] == "void":
             raise ValueError("Attempted to interpret void as a struct member, how did you get here?")
@@ -119,6 +127,9 @@ class VolatilitySymbolsEncoder:
         :param enum_name: Name of an enum: volatility/schemas/schema-6.2.0.json:definitions.element_enum
         :return: List of BlockTypes representing the enum.
         """
+        if enum_name not in self.syms["enums"]:
+            raise UndefinedTypeError(f"Enum {enum_name} not defined in symbols.")
+
         return self.syms["enums"][enum_name]["size"] * [BlockType.Data]
 
     @lru_cache
@@ -128,6 +139,9 @@ class VolatilitySymbolsEncoder:
         :param user_type_name: Name of a user type: volatility/schemas/schema-6.2.0.json:definitions.element_user_type
         :return: List of BlockTypes representing the user type, a dict with points to relationships.
         """
+        if user_type_name not in self.syms["user_types"]:
+            raise UndefinedTypeError(f"User type {user_type_name} not defined in symbols.")
+
         user_type = self.syms["user_types"][user_type_name]
         field_blocks = [
             (description["offset"], self._encode_type_descriptor(description["type"]))
