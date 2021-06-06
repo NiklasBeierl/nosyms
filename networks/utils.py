@@ -5,6 +5,13 @@ import dgl
 
 
 def one_hot_with_neutral(tensor: t.tensor, neutral_class: int = 0, **kwargs):
+    """
+    One-hot encode a tensor while removing all scalars corresponding to a specified `neutral_class`.
+    :param tensor: tensor to one-hot-encode.
+    :param neutral_class: class whos corresponding scalars will be removed.
+    :param kwargs: passed to torch.nn.functional.one_hot.
+    :return: one hot encoded tensor one hot encoded tensor.
+    """
     result = one_hot(tensor, **kwargs)
     classes = result.shape[-1]
     if neutral_class >= classes:
