@@ -162,7 +162,6 @@ class BallGraphBuilder(GraphBuilder):
             did_encode.add(current_td)
 
             blocks: np.array = blocks_to_numpy(blocks)
-            pointers = {offset: json.dumps(td) for offset, td in pointers.items()}
 
             if not pointers:
                 block_data.append(self._grab_ball(blocks, 0))
@@ -171,12 +170,14 @@ class BallGraphBuilder(GraphBuilder):
                 in_struct_offsets.append(0)
                 continue
 
-            last_node = None
-            last_offset = None
-            for i, pointer in enumerate(sorted(pointers.items(), key=lambda p: p[0])):
+            pointers = {offset: json.dumps(td) for offset, td in pointers.items()}
+            sorted_pointers = list(sorted(pointers.items(), key=lambda p: p[0]))
+            type_local_node_ids = {}
+            for i, pointer in enumerate(sorted_pointers):
                 offset, td = pointer
                 block_data.append(self._grab_ball(blocks, offset))
                 current_node = SymbolNodeId(current_td, i)
+                type_local_node_ids[len(type_local_node_ids)] = current_node
                 node_ids[current_node] = len(node_ids)
                 in_struct_offsets.append(offset)
                 if td not in did_encode and td not in to_encode:
@@ -184,10 +185,9 @@ class BallGraphBuilder(GraphBuilder):
 
                 target_node = SymbolNodeId(td, 0)
                 points_to_edges.append((current_node, target_node))
-                if last_node and offset <= last_offset + self._max_centroid_dist:
-                    precedes_edges.append((last_node, current_node))
-                last_node = current_node
-                last_offset = offset
+
+            for src, target in self._compute_precedes([offset for offset, _ in sorted_pointers]):
+                precedes_edges.append((type_local_node_ids[src], type_local_node_ids[target]))
 
         points_to_edges: DglAdjacency = self._symobl_node_edges_to_dgl(points_to_edges, node_ids)
         precedes_edges: DglAdjacency = self._symobl_node_edges_to_dgl(precedes_edges, node_ids)
@@ -218,16 +218,16 @@ class BallGraphBuilder(GraphBuilder):
             results.append(batch)
         return t.cat(results)
 
-    def _compute_precedes(self, sorted_pointers: List[Pointer]) -> DglAdjacency:
+    def _compute_precedes(self, sorted_offsets: List[int]) -> EdgeList:
         result: EdgeList = []
         i = 0
-        while i < len(sorted_pointers) - 1:
-            prev_offset, _ = sorted_pointers[i]
-            next_offset, _ = sorted_pointers[i + 1]
+        while i < len(sorted_offsets) - 1:
+            prev_offset = sorted_offsets[i]
+            next_offset = sorted_offsets[i + 1]
             if next_offset <= prev_offset + self._max_centroid_dist:
                 result.append((i, i + 1))
             i += 1
-        return _edge_list_to_dgl(result)
+        return result
 
     def create_snapshot_graph(
         self, mem_encoder: BallEncoder, pointers: List[Pointer], compressor: BlockCompressor = None
@@ -246,7 +246,7 @@ class BallGraphBuilder(GraphBuilder):
         intervals = list(zip(starts, ends, range(len(pointers))))
 
         points_to_edges = compute_pointer_edges(intervals, sorted_pointers)
-        precedes_edges = self._compute_precedes(sorted_pointers)
+        precedes_edges = _edge_list_to_dgl(self._compute_precedes([p.offset for p in sorted_pointers]))
         follows_edges = precedes_edges[1], precedes_edges[0]
         graph = heterograph(
             {
