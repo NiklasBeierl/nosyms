@@ -29,7 +29,7 @@ def json_lru_cache(func: Callable) -> Callable:
     @lru_cache
     def _decode(*args, **kwargs):
         args = [json.loads(arg) if isinstance(arg, str) else arg for arg in args]
-        kwargs = {key: json.laods(arg) if isinstance(arg, str) else arg for key, arg in kwargs.items()}
+        kwargs = {key: json.loads(arg) if isinstance(arg, str) else arg for key, arg in kwargs.items()}
         return func(*args, **kwargs)
 
     def _encode(*args, **kwargs):
