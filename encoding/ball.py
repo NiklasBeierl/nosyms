@@ -23,10 +23,20 @@ from encoding.symbol_blocks import UndefinedTypeError
 from encoding.block_types import blocks_to_numpy
 from hyperparams import BALL_RADIUS
 
+# https://docs.dgl.ai/en/0.6.x/generated/dgl.heterograph.html?highlight=heterograph#dgl-heterograph
 DglAdjacency = Tuple[Iterable[int], Iterable[int]]
+# This representation of edges is used internally because its easier to work with at times.
+EdgeList = List[Tuple[int, int]]
 
 # Encoding and compressing memory is batched for space / time efficiency
 _ENCODE_BATCH_SIZE = 1000
+
+
+def _edge_list_to_dgl(edges: EdgeList) -> DglAdjacency:
+    if not edges:
+        warn("Creating empty dgl adjacency, something might be wrong.")
+        return [], []
+    return tuple(zip(*edges))
 
 
 def _grab_ball(blocks: np.array, offset: int, radius: int, pointer_size: int) -> np.array:
@@ -72,31 +82,30 @@ class BallEncoder(MemoryEncoder):
         return _grab_ball(self.as_numpy, offset, self.radius, self.pointer_size)
 
 
-def _compute_pointers_shard(intervals: List[Tuple[int, int, int]], pointers: List[Pointer]):
+def _compute_pointers_shard(intervals: List[Tuple[int, int, int]], pointers: List[Pointer]) -> EdgeList:
     chunks_tree = ITree()
     for interval in intervals:
         chunks_tree.insert(*interval)
-    points_to_edges = []
+    points_to_edges: EdgeList = []
     for source_id, p in pointers:
         for _, _, target_id in chunks_tree.find_at(p.target):
             points_to_edges.append((source_id, target_id))
     return points_to_edges
 
 
-def _compute_pointers(intervals: List[Tuple[int, int, int]], sorted_pointers: List[Pointer]):
-    # Scatter pointers accross cores
-    cpus = cpu_count()
+def _compute_pointers(intervals: List[Tuple[int, int, int]], sorted_pointers: List[Pointer]) -> DglAdjacency:
+    # Scatter sorted_pointers across cores
+    cpus = cpu_count() // 2  # TODO: rbi-tree causing OOM
     scattered_pointers = defaultdict(list)
     for i, pointer in enumerate(sorted_pointers):
         scattered_pointers[i % cpus].append((i, pointer))
 
     pool = ProcessPool(cpus)
     func = partial(_compute_pointers_shard, intervals)
-    result = pool.map(func, scattered_pointers.values())
-    result = list(result.result())
+    fut = pool.map(func, scattered_pointers.values())
+    results: List[EdgeList] = list(fut.result())
     # Gather
-    result = [item for sublist in result for item in sublist]
-    return result
+    return _edge_list_to_dgl([item for sublist in results for item in sublist])
 
 
 class BallGraphBuilder(GraphBuilder):
@@ -105,12 +114,12 @@ class BallGraphBuilder(GraphBuilder):
         self.radius = radius
 
     @staticmethod
-    def _prepare_edges_for_dgl(
+    def _symobl_node_edges_to_dgl(
         edges: List[Tuple[SymbolNodeId, SymbolNodeId]], node_ids: bidict[SymbolNodeId, int], did_encode: Set[str]
     ) -> DglAdjacency:
         edges = [(u, v) for u, v in edges if u.type_descriptor in did_encode and v.type_descriptor in did_encode]
         edges = [(node_ids[u], node_ids[v]) for u, v in edges]
-        return tuple(zip(*edges))
+        return _edge_list_to_dgl(edges)
 
     def _grab_ball(self, blocks: np.array, offset: int) -> np.array:
         return _grab_ball(blocks, offset, self.radius, self.pointer_size)
@@ -170,8 +179,8 @@ class BallGraphBuilder(GraphBuilder):
                     precedes_edges.append((last_node, current_node))
                 last_node = current_node
 
-        points_to_edges: DglAdjacency = self._prepare_edges_for_dgl(points_to_edges, node_ids, did_encode)
-        precedes_edges: DglAdjacency = self._prepare_edges_for_dgl(precedes_edges, node_ids, did_encode)
+        points_to_edges: DglAdjacency = self._symobl_node_edges_to_dgl(points_to_edges, node_ids, did_encode)
+        precedes_edges: DglAdjacency = self._symobl_node_edges_to_dgl(precedes_edges, node_ids, did_encode)
         follows_edges = precedes_edges[1], precedes_edges[0]  # You get the idea...
         graph: DGLHeteroGraph = heterograph(
             {
