@@ -93,7 +93,7 @@ def _compute_pointers_shard(intervals: List[Tuple[int, int, int]], pointers: Lis
     return points_to_edges
 
 
-def _compute_pointers(intervals: List[Tuple[int, int, int]], sorted_pointers: List[Pointer]) -> DglAdjacency:
+def compute_pointer_edges(intervals: List[Tuple[int, int, int]], sorted_pointers: List[Pointer]) -> DglAdjacency:
     # Scatter sorted_pointers across cores
     cpus = cpu_count() // 2  # TODO: rbi-tree causing OOM
     scattered_pointers = defaultdict(list)
@@ -220,7 +220,7 @@ class BallGraphBuilder(GraphBuilder):
         while i < len(sorted_pointers) - 1:
             prev_offset, _ = sorted_pointers[i]
             next_offset, _ = sorted_pointers[i + 1]
-            if next_offset <= self._max_centroid_dist:
+            if next_offset <= prev_offset + self._max_centroid_dist:
                 result.append((i, i + 1))
             i += 1
 
@@ -242,7 +242,7 @@ class BallGraphBuilder(GraphBuilder):
 
         intervals = list(zip(starts, ends, range(len(pointers))))
 
-        points_to_edges = _compute_pointers(intervals, sorted_pointers)
+        points_to_edges = compute_pointer_edges(intervals, sorted_pointers)
         precedes_edges = self._compute_precedes(sorted_pointers)
         follows_edges = precedes_edges[1], precedes_edges[0]
         graph = heterograph(
