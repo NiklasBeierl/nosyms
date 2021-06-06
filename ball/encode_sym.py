@@ -13,9 +13,13 @@ import warnings
 warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
 warnings.filterwarnings("ignore", message="Undefined\ type\ encountered")
 
-ENCODE_TIMEOUT = 120
 TARGET_SYMBOL = "task_struct"
 POINTER_SIZE = 8
+
+# Parallel processing causes issues with rbi-tree sometimes, see: https://github.com/mikpom/rbi_tree/issues/4
+DO_PARALLEL = False
+# Only used if DO_PARALLEL == True
+ENCODE_TIMEOUT = 120
 
 
 def encode_sym_file(sym_path):
@@ -38,25 +42,29 @@ def encode_sym_file(sym_path):
         graph, node_ids = ball_encoder.create_type_graph(sym_encoder, TARGET_SYMBOL)
 
         print(f"Done encoding: {sym_path}")
-        return (sym_path, graph, node_ids)
+        return sym_path, graph, node_ids
     except Exception as e:
         raise Exception(f"Failed to encode {TARGET_SYMBOL} from {sym_path}.") from e
 
 
-pool = ProcessPool(max_workers=cpu_count())
 all_paths = list(glob(SYMBOL_GLOB))
-result = pool.map(encode_sym_file, all_paths, timeout=ENCODE_TIMEOUT).result()
 
-all_data = []
-while True:
-    try:
-        all_data.append(next(result))
-    except TimeoutError:
-        warnings.warn("A symbols file timed out.")
-    except StopIteration:
-        break
-    except Exception as e:
-        print(e)
+
+if DO_PARALLEL:
+    pool = ProcessPool(max_workers=1)
+    result = pool.map(encode_sym_file, all_paths, timeout=ENCODE_TIMEOUT).result()
+    all_data = []
+    while True:
+        try:
+            all_data.append(next(result))
+        except TimeoutError:
+            warnings.warn("A symbols file timed out.")
+        except StopIteration:
+            break
+        except Exception as e:
+            print(e)
+else:
+    all_data = [encode_sym_file(p) for p in all_paths]
 
 processed_paths = [p for p, _, _ in all_data]
 if set(all_paths) != set(processed_paths):
