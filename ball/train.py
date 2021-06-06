@@ -8,7 +8,7 @@ from sklearn.metrics import rand_score
 from sklearn.model_selection import train_test_split
 import dgl
 from networks.embedding import MyConvolution
-from networks.utils import one_hot_with_neutral
+from networks.utils import one_hot_with_neutral, add_self_loops
 from encoding import WordCompressor
 from file_paths import SYM_DATA_PATH, MODEL_PATH
 from hyperparams import EPOCHS, LEARNING_RATE
@@ -59,7 +59,7 @@ std:  {np.std(rands):.4f}      {np.std(rands_comp):.4f}"""
 )
 
 batch_graph = dgl.batch([g for _, g, _ in all_data])
-
+batch_graph = add_self_loops(batch_graph)
 blocks_one_hot = one_hot_with_neutral(batch_graph.ndata["blocks"].long())
 blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
 batch_graph.ndata["blocks"] = blocks_one_hot.float()
