@@ -4,7 +4,6 @@ import warnings
 import numpy as np
 import torch as t
 from torch.nn.functional import cross_entropy
-from sklearn.metrics import rand_score
 from sklearn.model_selection import train_test_split
 import dgl
 from networks.embedding import MyConvolution
@@ -23,40 +22,14 @@ TARGET_SYMBOL = "task_struct"
 BINARY_CLASSIFY = True
 
 
-def encoding_rand_score(graph, true_labels):
-    encodings = {}
-    encoding_labels = np.zeros(graph.num_nodes())
-    for i, bs in enumerate(graph.ndata["blocks"]):
-        key = tuple(bs.numpy())
-        if key not in encodings:
-            encodings[key] = len(encodings)
-        encoding_labels[i] = encodings[key]
-    # Many balls end up with identical type encodings (not necessarily identical edges, tho)
-    return rand_score(true_labels, encoding_labels)
-
-
 compressor = WordCompressor()
-rands_comp = []
-rands = []
 for path, graph, node_ids in all_data:
     true_labels = np.zeros(graph.num_nodes())
     for i, n in node_ids.inv.items():
         if TARGET_SYMBOL in n.type_descriptor:  # TODO This is not he safest check, but it works for task_struct :)
             true_labels[i] = 1 if BINARY_CLASSIFY else i
-
     graph.ndata[f"{TARGET_SYMBOL}_labels"] = t.tensor(true_labels)
-    r_score = encoding_rand_score(graph, true_labels)
-    rands.append(r_score)
     graph.ndata["blocks"] = compressor.compress_batch(graph.ndata["blocks"])
-    r_score_compressed = encoding_rand_score(graph, true_labels)
-    rands_comp.append(r_score_compressed)
-
-print(
-    f"""Rand score for encodings:
-      Original:   Compressed:   
-mean: {np.mean(rands):.4f}      {np.mean(rands_comp):.4f} 
-std:  {np.std(rands):.4f}      {np.std(rands_comp):.4f}"""
-)
 
 batch_graph = dgl.batch([g for _, g, _ in all_data])
 batch_graph = add_self_loops(batch_graph)
@@ -71,7 +44,6 @@ hidden_size = int(np.median([in_size, out_size]))
 model = MyConvolution(batch_graph, in_size, hidden_size, out_size)
 
 index = np.array(range(batch_graph.num_nodes()))
-# TODO: Dataset is EXTREMELY unbalanced. (Subsample 0 class?)
 train_idx, test_idx = train_test_split(index, random_state=33, train_size=0.7, stratify=labels)
 
 opt = t.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)

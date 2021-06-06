@@ -1,7 +1,26 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Iterable
 import torch as t
 from torch.nn.functional import one_hot
+from sklearn.metrics import rand_score
 import dgl
+import numpy as np
+
+
+def encoding_rand_score(graph: dgl.DGLGraph, true_labels: Iterable[int]) -> float:
+    """
+    Compute rand score for clustering created by putting all chunks with identical block type encoding into one cluster.
+    :param graph: graph with "blocks" in graph.ndata
+    :param true_labels: true clustering to compare against.
+    :return: rand score.
+    """
+    encodings = {}
+    encoding_labels = np.zeros(graph.num_nodes())
+    for i, bs in enumerate(graph.ndata["blocks"]):
+        key = tuple(bs.numpy())
+        if key not in encodings:
+            encodings[key] = len(encodings)
+        encoding_labels[i] = encodings[key]
+    return rand_score(true_labels, encoding_labels)
 
 
 def one_hot_with_neutral(tensor: t.tensor, neutral_class: int = 0, **kwargs):
