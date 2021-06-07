@@ -21,7 +21,6 @@ def blocks_to_numpy(blocks: List[BlockType]) -> np.array:
     :param blocks: List of BlockTypes to encode.
     :return: numpy array of encoded BlockTypes.
     """
-    # TODO: This probably has room for optimization (np.vectorize?).
     return np.array([b.value for b in blocks], dtype=np.int)
 
 
@@ -59,6 +58,7 @@ class WordCompressor(BlockCompressor):
         batch_height = height - (height % self.word_size)
         batch = blocks[:, :batch_height]
         batch = batch.reshape(length, batch_height // self.word_size, self.word_size)
+        # Mode chooses the lower value in case of a tie
         result, _ = batch.mode(dim=2)
 
         # Deal with remaining blocks
