@@ -63,3 +63,18 @@ Sometimes volatility symbols define structs with pointers to other structs it ha
 be a showstopper, but hampers the accuracy of the model. NoSysms treats these pointers the same way it treats void
 pointers: It knows that the corresponding bytes are supposed to be a pointer, but it doesn't try to follow the pointer
 while encoding.
+
+### `Misaligned pointer detected!`
+Usually pointers are aligned, meaning they are an offset which is a multiple of their length.
+There are of course exceptions to this rule, like for example structs that serialize pointers:  
+The warning prints the args of the encoding function, which should somehow reveal which struct contained this
+misaligned pointer. Figuring out whether that struct containing a misaligned pointer is a problem will likely require
+doing a bit of research. For the Linux Kernel I recommend starting 
+[here](https://elixir.bootlin.com/linux/latest/source).
+
+Some cases I encountered : 
+- `saved_context` from [suspend64](https://github.com/torvalds/linux/blob/614124bea77e452aa6df7a8714e8bc820b489922/arch/x86/include/asm/suspend_64.h#L21)
+  - since it is related to suspension I guess it's fine. :)
+- A bunch of of structs related to acpi: `acpi_resource_uart_serialbus`, `acpi_resource_source`, 
+  `acpi_resource_pin_function`
+  - Not really sure about that so for, but it only happened with one of my symbol files.

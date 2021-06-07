@@ -1,6 +1,7 @@
 import json
 from collections import defaultdict
 from functools import cached_property, lru_cache
+from warnings import warn
 from typing import List, Union, Tuple, Callable, Dict
 from encoding import BlockType
 
@@ -67,7 +68,11 @@ def _add_pointer_dict_logic(
                 # This happens in weird scenarios like 0-length arrays in the middle of structs
                 # I really do not know how volatility makes this shit up.
                 if offset % self.pointer_size != 0:
-                    raise ValueError(f"Misaligned pointer: {args}")
+                    warn(
+                        "Misaligned pointer detected! If you see this warning a lot, something might be broken.\n"
+                        + f"Encode func args: {args}\n"
+                        + "Consult the Readme!"
+                    )
 
                 # For an unambiguous pointer we need pointer_size consecutive equal type_descriptors
                 if len(set(blocks[offset : offset + self.pointer_size])) == 1:
