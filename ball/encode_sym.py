@@ -50,7 +50,7 @@ if DO_PARALLEL:
         try:
             all_data.append(next(result))
         except TimeoutError:
-            warnings.warn("A symbols file timed out.")
+            print("A symbols file timed out.")
         except StopIteration:
             break
         except Exception as e:
