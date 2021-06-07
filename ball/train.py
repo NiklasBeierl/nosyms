@@ -1,6 +1,5 @@
 import pickle
 from collections import Counter
-import warnings
 import numpy as np
 import torch as t
 from torch.nn.functional import cross_entropy
@@ -11,9 +10,7 @@ from networks.utils import one_hot_with_neutral, add_self_loops
 from encoding import WordCompressor
 from file_paths import SYM_DATA_PATH, MODEL_PATH
 from hyperparams import EPOCHS, LEARNING_RATE
-
-warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
-warnings.filterwarnings("ignore", message="Undefined\ type\ encountered")
+import develop.filter_warnings
 
 with open(SYM_DATA_PATH, "rb") as f:
     all_data = pickle.load(f)

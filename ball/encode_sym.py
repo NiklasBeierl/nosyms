@@ -6,11 +6,7 @@ from pebble import ProcessPool
 from encoding import VolatilitySymbolsEncoder
 from encoding.ball import BallGraphBuilder
 from file_paths import SYM_DATA_PATH, SYMBOL_GLOB
-
-import warnings
-
-warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
-warnings.filterwarnings("ignore", message="Undefined\ type\ encountered")
+import develop.filter_warnings
 
 TARGET_SYMBOL = "task_struct"
 POINTER_SIZE = 8

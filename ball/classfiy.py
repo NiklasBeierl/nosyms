@@ -6,9 +6,7 @@ from torch.nn.functional import softmax
 from hyperparams import BALL_CONV_LAYERS
 from networks.utils import one_hot_with_neutral, add_self_loops
 from file_paths import MODEL_PATH, MEM_GRAPH_PATH, RESULTS_PATH
-import warnings
-
-warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
+import develop.filter_warnings
 
 BATCH_SIZE = 3000
 

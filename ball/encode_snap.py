@@ -8,11 +8,7 @@ from encoding import Pointer
 from encoding.ball import BallEncoder, BallGraphBuilder
 from encoding import WordCompressor, VolatilitySymbolsEncoder
 from file_paths import MATCHING_SYMBOLS_PATH, MEM_GRAPH_PATH, TASKS_CSV_PATH, POINTER_CSV_PATH, RAW_DUMP_PATH
-
-import warnings
-
-warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
-warnings.filterwarnings("ignore", message="Undefined\ type\ encountered")
+import develop.filter_warnings
 
 pointers_df = pd.read_csv(POINTER_CSV_PATH).dropna()
 pointers_df.physical = pointers_df.physical.astype(int)

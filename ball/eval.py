@@ -3,11 +3,7 @@ import numpy as np
 from sklearn.metrics import precision_score, recall_score, confusion_matrix, f1_score
 from torch.nn.functional import softmax
 from file_paths import MEM_GRAPH_PATH, RESULTS_PATH
-
-
-import warnings
-
-warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
+import develop.filter_warnings
 
 with open(MEM_GRAPH_PATH, "rb") as f:
     mem_graph = pickle.load(f)
