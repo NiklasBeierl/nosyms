@@ -116,7 +116,7 @@ class BallGraphBuilder(GraphBuilder):
         super(BallGraphBuilder, self).__init__(*args, **kwargs)
         self.radius = radius
 
-    @property
+    @cached_property
     def _max_centroid_dist(self):
         return self.pointer_size + (2 * self.radius)
 
@@ -219,6 +219,13 @@ class BallGraphBuilder(GraphBuilder):
         return t.cat(results)
 
     def _compute_precedes(self, sorted_offsets: List[int]) -> EdgeList:
+        """
+        Compute precedes relationships between balls induced by offsets. (Alternative)
+        Consider b1 to be preceding b2 if b1s centroid is before b2s centroid, their balls touch / overlap and there is
+        no other centroid between b1 and b2.
+        :param sorted_offsets: Sorted offsets of centroid balls
+        :return: Precedes relationship as EdgeList
+        """
         result: EdgeList = []
         i = 0
         while i < len(sorted_offsets) - 1:
@@ -227,6 +234,24 @@ class BallGraphBuilder(GraphBuilder):
             if next_offset <= prev_offset + self._max_centroid_dist:
                 result.append((i, i + 1))
             i += 1
+        return result
+
+    # Surprisingly, results tend to be worse when using this logic.
+    def _compute_precedes_alt(self, sorted_offsets: List[int]) -> EdgeList:
+        """
+        Compute precedes relationships between balls induced by offsets. (Alternative)
+        Consider b1 to be preceding b2 if b1s centroid is before b2s centroid and their balls touch / overlap.
+        :param sorted_offsets: Sorted offsets of centroid balls
+        :return: Precedes relationship as EdgeList
+        """
+        result: EdgeList = []
+        for p_id, prev_offset in enumerate(sorted_offsets[:-1]):
+            n_id = p_id + 1
+            max_offset = prev_offset + self._max_centroid_dist
+            while n_id < len(sorted_offsets) and sorted_offsets[n_id] <= max_offset:
+                result.append((p_id, n_id))
+                n_id += 1
+
         return result
 
     def create_snapshot_graph(
