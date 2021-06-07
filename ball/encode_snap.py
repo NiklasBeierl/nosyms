@@ -15,6 +15,7 @@ warnings.filterwarnings("ignore", message="DGLGraph\.__len__")
 warnings.filterwarnings("ignore", message="Undefined\ type\ encountered")
 
 pointers_df = pd.read_csv(POINTER_CSV_PATH).dropna()
+pointers_df.physical = pointers_df.physical.astype(int)
 pointers = [Pointer(o, t) for o, t in pointers_df[["offset", "physical"]].itertuples(index=False)]
 
 encoder = BallEncoder(RAW_DUMP_PATH, pointers=[p.offset for p in pointers], pointer_size=8)
