@@ -1,7 +1,6 @@
 import json
 import pickle
 from glob import glob
-from multiprocessing import cpu_count
 from concurrent.futures import TimeoutError
 from pebble import ProcessPool
 from encoding import VolatilitySymbolsEncoder
@@ -33,25 +32,22 @@ def encode_sym_file(sym_path):
         raise ValueError(f"Wont encode {sym_path}, because it has no {TARGET_SYMBOL} user type.")
 
     print(f"Encoding: {sym_path}")
-    try:
-        with open(sym_path) as f:
-            syms = json.load(f)
+    with open(sym_path) as f:
+        syms = json.load(f)
 
-        sym_encoder = VolatilitySymbolsEncoder(syms)
-        ball_encoder = BallGraphBuilder()
-        graph, node_ids = ball_encoder.create_type_graph(sym_encoder, TARGET_SYMBOL)
+    sym_encoder = VolatilitySymbolsEncoder(syms)
+    ball_encoder = BallGraphBuilder()
+    graph, node_ids = ball_encoder.create_type_graph(sym_encoder, TARGET_SYMBOL)
 
-        print(f"Done encoding: {sym_path}")
-        return sym_path, graph, node_ids
-    except Exception as e:
-        raise Exception(f"Failed to encode {TARGET_SYMBOL} from {sym_path}.") from e
+    print(f"Done encoding: {sym_path}")
+    return sym_path, graph, node_ids
 
 
 all_paths = list(glob(SYMBOL_GLOB))
 
 
 if DO_PARALLEL:
-    pool = ProcessPool(max_workers=1)
+    pool = ProcessPool()
     result = pool.map(encode_sym_file, all_paths, timeout=ENCODE_TIMEOUT).result()
     all_data = []
     while True:
