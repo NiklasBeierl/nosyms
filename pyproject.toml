@@ -18,7 +18,6 @@ Pebble = "^4.6.1"
 # volatility3 = { path = "../volatility3", develop = true }
 volatility3 = "^1.0.1"
 bidict = "^0.21.2"
-rbi-tree = "^0.1.3"
 scikit-learn = "^0.24.2"
 
 [tool.poetry.dev-dependencies]

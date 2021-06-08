@@ -1,15 +1,12 @@
-from collections import deque, defaultdict
-from functools import partial, cached_property
+from collections import deque
+from functools import cached_property
 import json
-from multiprocessing import cpu_count
 from typing import Tuple, List, Set, Deque, Iterable, Dict, NamedTuple
 from warnings import warn
 from bidict import bidict, frozenbidict
 import torch as t
 import numpy as np
 from dgl import DGLHeteroGraph, heterograph
-from rbi_tree.tree import ITree
-from pebble import ProcessPool
 from encoding import (
     BlockType,
     SymbolNodeId,
@@ -100,23 +97,6 @@ def _edge_list_to_dgl(edges: EdgeList) -> DglAdjacency:
     return tuple(zip(*edges))
 
 
-def _compute_pointers_shard(chunks: List[Chunk], pointers: List[ChunkPointer]) -> EdgeList:
-    """
-    Handle computation of compute_pointer_edges on a subset of the offsets. Refer to calling methods docs.
-    :param chunks: Memory chunks as triples: start, end , node_id
-    :param pointers: List of node_id, pointer tuples
-    :return: EdgeList identified edges
-    """
-    chunks_tree = ITree()
-    for chunk in chunks:
-        chunks_tree.insert(*chunk)
-    points_to_edges: EdgeList = []
-    for node_id, target_address in pointers:
-        for _, _, target_id in chunks_tree.find_at(target_address):
-            points_to_edges.append((node_id, target_id))
-    return points_to_edges
-
-
 def _compute_pointer_edges(chunks: List[Chunk], chunk_pointers: List[ChunkPointer]) -> DglAdjacency:
     """
     Compute dgl adjacency from chunks and ChunkPointers.
@@ -125,18 +105,39 @@ def _compute_pointer_edges(chunks: List[Chunk], chunk_pointers: List[ChunkPointe
     :return: Dgl adjacency describing the points_to relationship
     """
 
-    # Scatter chunk_pointers across cores
-    cpus = cpu_count() // 2  # TODO: rbi-tree causing OOM
-    scattered_pointers = defaultdict(list)
-    for i, pointer in enumerate(chunk_pointers):
-        scattered_pointers[i % cpus].append(pointer)
+    chunk_data = np.array(chunks, dtype=np.int64)
+    chunk_data = chunk_data[chunk_data[:, 2].argsort()].T  # Sort by chunk id
 
-    pool = ProcessPool(cpus)
-    func = partial(_compute_pointers_shard, chunks)
-    fut = pool.map(func, scattered_pointers.values())
-    results: List[EdgeList] = list(fut.result())
-    # Gather
-    return _edge_list_to_dgl([item for sublist in results for item in sublist])
+    starts = chunk_data[0]
+    sorted_start_ids = np.argsort(starts)
+    starts.sort()  # Sort in place
+
+    ends = chunk_data[1]
+    sorted_end_ids = np.argsort(ends)
+    ends.sort()  # Sort in place
+
+    chunk_pointers = list(sorted(chunk_pointers, key=lambda c: c.target))
+    cp_targets = np.array([cp.target for cp in chunk_pointers])
+    start_indices = np.searchsorted(starts, cp_targets, side="right")  # starts[r[x]-1] <= cp[x] < starts[r[x]]
+    end_indices = np.searchsorted(ends, cp_targets, side="left")  # ends[r[x]-1] < cp[x] <= ends[r[x]]
+
+    edges: EdgeList = []
+
+    last_e = 0
+    last_s = 0
+    inside = set()
+    for cp, s, e in zip(chunk_pointers, start_indices, end_indices):
+        # starts[:s-1] <= cp < starts[s:]
+        inside.update(sorted_start_ids[last_s:s])
+        # ends[:e-1] < cp <= ends[:e]
+        inside.difference_update(sorted_end_ids[last_e:e])
+        for i in inside:
+            edges.append((cp.node_id, i))
+
+        last_e = e
+        last_s = s
+
+    return _edge_list_to_dgl(edges)
 
 
 class BallGraphBuilder(GraphBuilder):
