@@ -160,9 +160,9 @@ class BallGraphBuilder(GraphBuilder):
 
     def _ball_from_offset(self, offset: int) -> Tuple[int, int]:
         """
-        Create ball around offset according to radius and pointer size.
+        Create ball around offset according to configuration.
         """
-        return offset - self.pointer_size, offset + self.radius + self.pointer_size
+        return offset - self.pointer_size, offset + self.pointer_size
 
     # This might seem overkill, but it makes implementing congruent encodings a lot simpler.
     def _simulate_addresses(
@@ -327,8 +327,7 @@ class BallGraphBuilder(GraphBuilder):
 
         # Chunks (memory segments)
         starts = np.array([max(0, c - self.radius) for c in sorted_centroids], dtype=np.int64)
-        end_offset = self.pointer_size + self.radius
-        ends = np.array([min(mem_encoder.size, c + end_offset) for c in sorted_centroids], dtype=np.int64)
+        ends = np.array([min(mem_encoder.size, c + self.radius) for c in sorted_centroids], dtype=np.int64)
         chunks: List[Chunk] = [Chunk(s, e, i) for s, e, i in zip(starts, ends, range(len(sorted_centroids)))]
 
         # Pointers always belong to a chunk, their offsets are discarded in favor of the node_id after this point
@@ -344,7 +343,7 @@ class BallGraphBuilder(GraphBuilder):
 
         graph = heterograph(
             {
-                ("chunk", "pointed_to_by", "chunk"): points_to_edges[::-1],
+                ("chunk", "pointed_to_by", "chunk"): points_to_edges[::-1],  # Reversing relationship
                 ("chunk", "precedes", "chunk"): precedes_edges,
                 ("chunk", "follows", "chunk"): follows_edges,
             }
