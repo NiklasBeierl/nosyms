@@ -20,7 +20,7 @@ COLUMNS = [
 ]
 
 # DEFAULT_DTB_ADDR = 0x888000000000
-DEFAULT_DTB_ADDR = 0x1e0a000
+DEFAULT_DTB_ADDR = 0x1E0A000
 
 # Canonical 64 bit "high mem" pointers
 # Using the infamous lookahead and zero-length capture to get overlapping matches.
@@ -80,22 +80,22 @@ class HighmemPointerScan(plugins.PluginInterface):
 
     @functools.lru_cache(maxsize=None)
     def dir2base(self, layer, dir, index):
-        entry = struct.unpack("<Q", layer.read(dir + 8*index, 8))[0]
-        if(entry&1 ==0):  # not present
+        entry = struct.unpack("<Q", layer.read(dir + 8 * index, 8))[0]
+        if entry & 1 == 0:  # not present
             raise InvalidAddressException("dir2base", dir, "Page not present")
-        return (entry&0x001FFFFFFFFFF000, entry&0xFFF)
+        return (entry & 0x001FFFFFFFFFF000, entry & 0xFFF)
 
     @functools.lru_cache(maxsize=None)
     def translate(self, layer, dtb, vaddr):
-        (l4,f4) = self.dir2base(layer, dtb,  (vaddr>>39)&0x1FF);
-        (l3,f3) = self.dir2base(layer, l4, (vaddr>>30)&0x1FF);
-        if(f3&0x80):
-            return l3 + (vaddr&((1<<30)-1))
-        (l2,f2) = self.dir2base(layer, l3, (vaddr>>21)&0x1FF);
-        if(f2&0x80):
-            return l2 + (vaddr&((1<<21)-1))
-        (l1,f1) = self.dir2base(layer, l2, (vaddr>>12)&0x1FF);
-        paddr = l1 + (vaddr&((1<<12)-1))
+        (l4, f4) = self.dir2base(layer, dtb, (vaddr >> 39) & 0x1FF)
+        (l3, f3) = self.dir2base(layer, l4, (vaddr >> 30) & 0x1FF)
+        if f3 & 0x80:
+            return l3 + (vaddr & ((1 << 30) - 1))
+        (l2, f2) = self.dir2base(layer, l3, (vaddr >> 21) & 0x1FF)
+        if f2 & 0x80:
+            return l2 + (vaddr & ((1 << 21) - 1))
+        (l1, f1) = self.dir2base(layer, l2, (vaddr >> 12) & 0x1FF)
+        paddr = l1 + (vaddr & ((1 << 12) - 1))
         # to check if paddr is in layer
         # if commented out, will also return physical addresses in memory mapping that are outside of memory dump (iomem??)
         # layer.read(paddr, 8)

@@ -10,7 +10,7 @@ def floyd(f, x0):
     # Eventually they will both be inside the cycle and then,
     # at some point, the distance between them will be
     # divisible by the period λ.
-    tortoise = f(x0) # f(x0) is the element/node next to x0.
+    tortoise = f(x0)  # f(x0) is the element/node next to x0.
     hare = f(f(x0))
     while tortoise != hare:
         tortoise = f(tortoise)
@@ -29,7 +29,7 @@ def floyd(f, x0):
     tortoise = x0
     while tortoise != hare:
         tortoise = f(tortoise)
-        hare = f(hare)   # Hare and tortoise move at same speed
+        hare = f(hare)  # Hare and tortoise move at same speed
         mu += 1
 
     # Find the length of the shortest cycle starting from x_μ
@@ -43,32 +43,35 @@ def floyd(f, x0):
 
     return lam, mu
 
+
 ###
 ptr = dict()
-with open("ptr.csv", newline="") as csvfile:
+with open("data_dump/memory_layer_nokaslr_pointers_translated.csv", newline="") as csvfile:
     r = csv.reader(csvfile, delimiter=",")
     for row in r:
         if not row[2]:
-            next
+            continue
         ptr[row[0]] = row[2]
 
 used = dict()
 
+
 def fwd(a):
     if a in used:
-        raise Exception("alreay processed")
+        raise Exception("already processed")
     return ptr[a]
+
 
 def getcycle(a, len):
     cycle = [a]
     used[a] = True
     while len:
-        print("appending ",a)
         a = ptr[a]
         cycle.append(a)
         used[a] = True
         len -= 1
     return cycle
+
 
 # print("test...")
 # print(getcycle('0xbee8358',120))
@@ -81,19 +84,17 @@ for a in ptr.keys():
         lam, mu = floyd(fwd, a)
         # size 1 loop is not really a loop.... 2 is also boring
         if lam <= 2:
-            next
+            continue
         # mu>0: just a pointer to the cycle, not the cycle itself
         elif mu > 0:
-            next
+            continue
         else:
-            cycles.append( (lam, getcycle(a,lam)) )
+            cycles.append((lam, getcycle(a, lam)))
     except Exception as e:
         # print(e)
-        next
+        continue
 
-cycles.sort(key=lambda x:x[0], reverse=True)
 
 for c in cycles:
-    print("Cycle of length {} at {}".format(c[0],c[1][0]))
-    print("Full cycle: ",c[1])
-
+    print("Cycle of length {} at {}".format(c[0], c[1][0]))
+    print("Full cycle: ", c[1])
