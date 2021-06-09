@@ -18,13 +18,16 @@ installation of [volatility3](https://github.com/volatilityfoundation/volatility
 This project uses [poetry](https://python-poetry.org/docs/) to manage its python dependencies. The most convenient way 
 to get started probably is using `pip3 install --user poetry` to install poetry "globally" and then running
 `poetry install` after `cd`ing into this projects folder. You can then use `poetry shell` to `activate` the `venv`
-poetry created and manages for this project. Wanna get out? Just run `deactivate` like in any old `venv`. :) 
+poetry created and manages for this project. Wanna get out? Just run `deactivate` like in any old `venv`. :)
+
+You can have volatility3 and matplotlib added to the venv by respectively appending `-E vol` or `-E plotting` to 
+`poetry install`.
 
 ## Using CUDA (recommended)
 If you want to run computations on a GPU, you need to install the cuda version of dgl. See how to choose ad install 
 the cuda version correctly [here](https://www.dgl.ai/pages/start.html).
-The easyiest way is to `peotry shell` into your venv after it was created with
-`poetry install` and then `pip install dgl-cudaXX.X  the cuda version of dgl.
+The easyiest way is to `peotry shell` into your venv after it was created with `poetry install` and then 
+`pip install dgl-cudaXX.X`  the cuda version of dgl.
 
 # Volatility3 Plugins
 ## `pointer_scan.HighmemPointerScan` 
