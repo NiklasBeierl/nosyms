@@ -4,6 +4,7 @@ from functools import cached_property, lru_cache
 from warnings import warn
 from typing import List, Union, Tuple, Callable, Dict
 from encoding import BlockType
+from humanize import naturalsize
 
 # Every base type has to have one of these "kinds".
 # Reference: volatility/schemas/schema-6.2.0.json:definitions.element_base_type
@@ -151,6 +152,13 @@ class VolatilitySymbolsEncoder:
             raise UndefinedTypeError(f"User type {user_type_name} not defined in symbols.")
 
         user_type = self.syms["user_types"][user_type_name]
+        size = user_type["size"]
+        if size > 1024 ** 2:
+            warn(
+                f"Type: {user_type_name} has size: {naturalsize(size, binary=True)}. "
+                + "Large types might cause your system to run out of memory during encoding!"
+            )
+
         field_blocks = [
             (description["offset"], self._encode_type_descriptor(description["type"]))
             for description in user_type["fields"].values()

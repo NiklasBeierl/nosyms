@@ -31,6 +31,11 @@ def encode_sym_file(sym_path):
     with open(sym_path) as f:
         syms = json.load(f)
 
+    # This type is in a hand full of debugging symbols and its size is 4 GiB, causing the symbol encoder to produce
+    # an OOM. It contains a 'mmuext_op' struct and then a zero length array of "long_unsigned_int".
+    # Any other type in my dataset is below one MiB in size, so I guess its fair to consider this an outlier.
+    del syms["user_types"]["unnamed_a315a22bd125afd5"]
+
     sym_encoder = VolatilitySymbolsEncoder(syms)
     ball_encoder = BallGraphBuilder()
     graph, node_ids = ball_encoder.create_type_graph(sym_encoder, TARGET_SYMBOL)
