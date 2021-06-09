@@ -11,7 +11,7 @@ import develop.filter_warnings
 TARGET_SYMBOL = "task_struct"
 POINTER_SIZE = 8
 
-# Parallel processing causes issues with rbi-tree sometimes, see: https://github.com/mikpom/rbi_tree/issues/4
+# Warning: This will kick your CPU into absolute overdrive, it also segfaults on some machines, no clue why.
 DO_PARALLEL = False
 # Only used if DO_PARALLEL == True
 ENCODE_TIMEOUT = 120
@@ -34,7 +34,8 @@ def encode_sym_file(sym_path):
     # This type is in a hand full of debugging symbols and its size is 4 GiB, causing the symbol encoder to produce
     # an OOM. It contains a 'mmuext_op' struct and then a zero length array of "long_unsigned_int".
     # Any other type in my dataset is below one MiB in size, so I guess its fair to consider this an outlier.
-    del syms["user_types"]["unnamed_a315a22bd125afd5"]
+    if "unnamed_a315a22bd125afd5" in syms["user_types"]:
+        del syms["user_types"]["unnamed_a315a22bd125afd5"]
 
     sym_encoder = VolatilitySymbolsEncoder(syms)
     ball_encoder = BallGraphBuilder()
@@ -59,7 +60,7 @@ if DO_PARALLEL:
         except StopIteration:
             break
         except Exception as e:
-            print(e)
+            print(f"Encoding failed: {e}")
 else:
     all_data = [encode_sym_file(p) for p in all_paths]
 
