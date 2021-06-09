@@ -48,12 +48,12 @@ _FAILED_SET = set()
 _ENCODE_BATCH_SIZE = 1000
 
 
-def _grab_ball(blocks: np.array, offset: int, radius: int, pointer_size: int) -> np.array:
-    size = (2 * radius) + pointer_size
+def _grab_ball(blocks: np.array, offset: int, radius: int) -> np.array:
+    size = 2 * radius
 
     result = np.full(size, BlockType.Unknown, dtype=np.int8)
     start = offset - radius
-    end = offset + pointer_size + radius
+    end = offset + radius
     chunk_offset = 0
     if offset < radius:
         start = 0
@@ -87,7 +87,7 @@ class BallEncoder(MemoryEncoder):
         return result
 
     def encode(self, offset: int) -> np.array:
-        return _grab_ball(self.as_numpy, offset, self.radius, self.pointer_size)
+        return _grab_ball(self.as_numpy, offset, self.radius)
 
 
 def _edge_list_to_dgl(edges: EdgeList) -> DglAdjacency:
@@ -150,19 +150,19 @@ class BallGraphBuilder(GraphBuilder):
         """
         Maximum distance two points can have in order for their balls to touch / overlap.
         """
-        return self.pointer_size + (2 * self.radius)
+        return 2 * self.radius
 
     def _grab_ball(self, blocks: np.array, offset: int) -> np.array:
         """
         Alias of _grab_ball with pointer size and radius applied.
         """
-        return _grab_ball(blocks, offset, self.radius, self.pointer_size)
+        return _grab_ball(blocks, offset, self.radius)
 
     def _ball_from_offset(self, offset: int) -> Tuple[int, int]:
         """
         Create ball around offset according to configuration.
         """
-        return offset - self.pointer_size, offset + self.pointer_size
+        return offset - self.radius, offset + self.radius
 
     # This might seem overkill, but it makes implementing congruent encodings a lot simpler.
     def _simulate_addresses(
