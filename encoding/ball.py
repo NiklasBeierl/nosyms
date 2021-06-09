@@ -196,8 +196,20 @@ class BallGraphBuilder(GraphBuilder):
         sorted_centroids = list(sorted(node_addresses.values()))
         return sorted_centroids, chunks, chunk_pointers
 
-    def create_type_graph(
+    def create_user_type_graph(
         self, sym_encoder: VolatilitySymbolsEncoder, user_type_name: str
+    ) -> Tuple[DGLHeteroGraph, frozenbidict[SymbolNodeId, int]]:
+        type_descriptor = {"kind": "struct", "name": user_type_name}
+        return self.create_type_graph_batch(sym_encoder, [type_descriptor])
+
+    def create_type_graph(
+        self, sym_encoder: VolatilitySymbolsEncoder
+    ) -> Tuple[DGLHeteroGraph, frozenbidict[SymbolNodeId, int]]:
+        tds = [{"kind": "struct", "name": name} for name in sym_encoder.syms["user_types"].keys()]
+        return self.create_type_graph_batch(sym_encoder, tds)
+
+    def create_type_graph_batch(
+        self, sym_encoder: VolatilitySymbolsEncoder, type_descriptors: List[Dict]
     ) -> Tuple[DGLHeteroGraph, frozenbidict[SymbolNodeId, int]]:
         self._check_encoder(sym_encoder)
 
@@ -210,8 +222,7 @@ class BallGraphBuilder(GraphBuilder):
         block_vectors: List[np.array] = []
 
         # Stuff for the while loop
-        type_descriptor = json.dumps({"kind": "struct", "name": user_type_name})
-        to_encode: Deque[str] = deque([type_descriptor])
+        to_encode: Deque[str] = deque([json.dumps(td) for td in type_descriptors])
         did_encode: Set[str] = set()
         while to_encode:
             current_td = to_encode.pop()
@@ -258,6 +269,10 @@ class BallGraphBuilder(GraphBuilder):
                 ("chunk", "pointed_to_by", "chunk"): points_to_edges[::-1],
                 ("chunk", "precedes", "chunk"): precedes_edges,
                 ("chunk", "follows", "chunk"): follows_edges,
+                # There might be nodes without any edges connected to them if they fit into a single ball and no other
+                # type explicitly points to them. This might cause dgl to under-size the graph and then error when node
+                # features are assigned. This "useless" relationship is the only workaround I could find.
+                ("chunk", "is", "chunk"): (range(len(sorted_centroids)), range(len(sorted_centroids))),
             }
         )
         graph.ndata["blocks"] = t.tensor(np.stack(block_vectors))
@@ -336,7 +351,6 @@ class BallGraphBuilder(GraphBuilder):
             ChunkPointer(i, p_dict[offset]) for i, offset in enumerate(sorted_centroids) if offset in p_dict
         ]
 
-        # TODO: This call leaks some 30 gigs of memory, wtf?
         points_to_edges = _compute_pointer_edges(chunks, chunk_pointers)
         precedes_edges = self._compute_precedes(sorted_centroids)
         follows_edges = precedes_edges[1], precedes_edges[0]  # Inverse of precedes

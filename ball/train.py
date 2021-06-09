@@ -35,7 +35,9 @@ labels = batch_graph.ndata[f"{TARGET_SYMBOL}_labels"]
 in_size = batch_graph.ndata["blocks"].shape[1] * (len(BlockType) - 1)  # Unknowns are either randomized or neutered
 out_size = int(max(labels) + 1)
 hidden_size = int(np.median([in_size, out_size]))
-model = MyConvolution(batch_graph, in_size, hidden_size, out_size)
+
+model_etypes = ["follows", "precedes", "pointed_to_by"]  # Ignoring the "is" relationship
+model = MyConvolution(model_etypes, in_size, hidden_size, out_size)
 
 index = np.array(range(batch_graph.num_nodes()))
 train_idx, test_idx = train_test_split(index, random_state=33, train_size=0.7, stratify=labels)
@@ -58,9 +60,7 @@ if t.cuda.is_available():
     loss_weights = loss_weights.cuda(dev)
 
 if UNKNOWN == "randomize":
-    gen = t.Generator(
-        #     device=dev
-    ).manual_seed(90324590320)
+    gen = t.Generator().manual_seed(90324590320)
     unknown_idx = batch_graph.ndata["blocks"] == 0
     # Subtracting one since the 0 class will be "randomized away"
     original_blocks = batch_graph.ndata["blocks"].clone() - 1

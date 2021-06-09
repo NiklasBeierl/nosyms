@@ -39,7 +39,7 @@ def encode_sym_file(sym_path):
 
     sym_encoder = VolatilitySymbolsEncoder(syms)
     ball_encoder = BallGraphBuilder()
-    graph, node_ids = ball_encoder.create_type_graph(sym_encoder, TARGET_SYMBOL)
+    graph, node_ids = ball_encoder.create_type_graph(sym_encoder)
 
     print(f"Done encoding: {sym_path}")
     return sym_path, graph, node_ids

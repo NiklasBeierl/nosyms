@@ -38,7 +38,7 @@ class GraphBuilder(ABC):
 
     @abstractmethod
     def create_type_graph(
-        self, sym_encoder: VolatilitySymbolsEncoder, user_type_name: str
+        self, sym_encoder: VolatilitySymbolsEncoder
     ) -> Tuple[DGLHeteroGraph, frozenbidict[SymbolNodeId, int]]:
         ...
 

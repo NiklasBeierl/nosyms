@@ -5,14 +5,14 @@ from hyperparams import BALL_CONV_LAYERS
 
 
 class MyConvolution(Module):
-    def __init__(self, graph, in_size, hidden_size, out_size):
+    def __init__(self, etypes, in_size, hidden_size, out_size):
         super(MyConvolution, self).__init__()
         self.conv_layers = ModuleList(
             [
                 HeteroGraphConv(
                     {
                         etype: GraphConv(in_size, in_size, norm="right", weight=True, activation=F.relu)
-                        for etype in graph.etypes
+                        for etype in etypes
                     },
                     aggregate="mean",
                 )
