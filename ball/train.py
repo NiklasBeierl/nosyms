@@ -38,6 +38,10 @@ hidden_size = int(np.median([in_size, out_size]))
 
 model_etypes = ["follows", "precedes", "pointed_to_by"]  # Ignoring the "is" relationship
 model = MyConvolution(model_etypes, in_size, hidden_size, out_size)
+# https://github.com/dmlc/dgl/issues/2310
+# https://github.com/dmlc/dgl/issues/3003
+batch_graph.remove_edges(batch_graph.edge_ids(*batch_graph.edges(etype="is"), etype="is"), etype="is")
+batch_graph.remove_edges(batch_graph.edge_ids(*batch_graph.edges(etype="is"), etype="is"), etype="is")
 
 index = np.array(range(batch_graph.num_nodes()))
 train_idx, test_idx = train_test_split(index, random_state=33, train_size=0.7, stratify=labels)
