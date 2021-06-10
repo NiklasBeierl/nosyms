@@ -94,7 +94,12 @@ def _edge_list_to_dgl(edges: EdgeList) -> DglAdjacency:
     if not edges:
         warn("Creating empty dgl adjacency, something might be wrong.")
         return [], []
-    return tuple(zip(*edges))
+    # The default type for edge ids is int64, believe it or not, but using int32 instead has substantial influence on
+    # the amount of memory required for the graphs. Since we will never get to that many nodes, I would use int16, but
+    # sadly int32 is the smallest type supported by dgl.
+    u = t.tensor([e[0] for e in edges], dtype=t.int32)
+    v = t.tensor([e[1] for e in edges], dtype=t.int32)
+    return u, v
 
 
 def _compute_pointer_edges(chunks: List[Chunk], chunk_pointers: List[ChunkPointer]) -> DglAdjacency:
