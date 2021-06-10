@@ -20,6 +20,7 @@ volatility3 = { version = "^1.0.1", optional = true }
 bidict = "^0.21.2"
 scikit-learn = "^0.24.2"
 humanize = "^3.7.1"
+interlap = "^0.2.7"
 
 [tool.poetry.dev-dependencies]
 black = "^21.4b1"

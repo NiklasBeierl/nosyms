@@ -3,11 +3,12 @@ import json
 import numpy as np
 import pandas as pd
 import torch as t
-from rbi_tree.tree import ITree
+from interlap import InterLap
 from encoding import Pointer
 from encoding.ball import BallEncoder, BallGraphBuilder
-from encoding import WordCompressor, VolatilitySymbolsEncoder
+from encoding import WordCompressor
 from file_paths import MATCHING_SYMBOLS_PATH, MEM_GRAPH_PATH, TASKS_CSV_PATH, POINTER_CSV_PATH, RAW_DUMP_PATH
+from warnings import warn
 import develop.filter_warnings
 
 pointers_df = pd.read_csv(POINTER_CSV_PATH).dropna()
@@ -20,20 +21,21 @@ comp = WordCompressor()
 
 mem_graph = bgb.create_snapshot_graph(encoder, pointers, comp)
 
-chunk_tree = ITree()
-for a, b, i in zip(mem_graph.ndata["start"], mem_graph.ndata["end"], range(mem_graph.num_nodes())):
-    chunk_tree.insert(a, b, i)
-
 with open(MATCHING_SYMBOLS_PATH) as f:
-    sym_encoder = VolatilitySymbolsEncoder(json.load(f))
-ts_def = sym_encoder.syms["user_types"]["task_struct"]
+    syms = json.load(f)
+ts_def = syms["user_types"]["task_struct"]
 ts_size = ts_def["size"]
 
 tasks = pd.read_csv(TASKS_CSV_PATH)
 task_index = np.full(mem_graph.num_nodes(), -1, dtype=np.int32)
+
+inter = InterLap()
+chunks = list(zip(mem_graph.ndata["start"].numpy(), mem_graph.ndata["end"].numpy(), range(mem_graph.num_nodes())))
+inter.update(chunks)
 for pid, offset in tasks[["PID", "physical"]].itertuples(index=False):
-    for cs, ce, i in chunk_tree.find(offset, offset + ts_size):
-        # TODO: A chunk MIGHT cover two task_structs!
+    for cs, ce, i in inter.find((offset, offset + ts_size)):
+        if task_index[i] != -1:
+            warn("A chunk is covering multiple task structs. 'pids' labels in mem graph will be inaccurate")
         task_index[i] = pid
 
 mem_graph.ndata["pids"] = t.tensor(task_index)
