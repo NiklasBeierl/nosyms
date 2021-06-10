@@ -17,11 +17,12 @@ with open(MEM_GRAPH_PATH, "rb") as f:
 
 with open(MODEL_PATH, "rb") as f:
     model = pickle.load(f)
+    model.training = False
 
 mem_graph = add_self_loops(mem_graph)
 if UNKNOWN == "randomize":
     blocks = mem_graph.ndata["blocks"].long()
-    blocks[blocks == 0] = BlockType.Data # There are going to be few if any.
+    blocks[blocks == 0] = BlockType.Data  # There are going to be few if any.
     blocks -= 1
     blocks_one_hot = one_hot(blocks)
 elif UNKNOWN == "neutral":

@@ -7,6 +7,7 @@ from hyperparams import BALL_CONV_LAYERS
 class MyConvolution(Module):
     def __init__(self, etypes, in_size, hidden_size, out_size):
         super(MyConvolution, self).__init__()
+        self.training = True
         self.conv_layers = ModuleList(
             [
                 HeteroGraphConv(
@@ -28,7 +29,7 @@ class MyConvolution(Module):
             h_dict = layer(graph, h_dict)
         result = h_dict["chunk"]
         for layer in self.class_layers:
-            result = layer(result)
+            result = layer(F.dropout(result, training=self.training))
         return result
 
     def forward_batch(self, blocks):
@@ -39,5 +40,5 @@ class MyConvolution(Module):
             h_dict = layer(bs, h_dict)
         result = h_dict["chunk"]
         for layer in self.class_layers:
-            result = layer(result)
+            result = layer(F.dropout(result, training=self.training))
         return result
