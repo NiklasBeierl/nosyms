@@ -2,10 +2,12 @@ import pickle
 import torch as t
 import numpy as np
 import dgl.dataloading as dgldl
-from torch.nn.functional import softmax
+from torch.nn.functional import softmax, one_hot
 from hyperparams import BALL_CONV_LAYERS
 from networks.utils import one_hot_with_neutral, add_self_loops
 from file_paths import MODEL_PATH, MEM_GRAPH_PATH, RESULTS_PATH
+from encoding import BlockType
+from hyperparams import UNKNOWN
 import develop.filter_warnings
 
 BATCH_SIZE = 3000
@@ -17,7 +19,14 @@ with open(MODEL_PATH, "rb") as f:
     model = pickle.load(f)
 
 mem_graph = add_self_loops(mem_graph)
-blocks_one_hot = one_hot_with_neutral(mem_graph.ndata["blocks"].long())
+if UNKNOWN == "randomize":
+    blocks = mem_graph.ndata["blocks"].long()
+    blocks[blocks == 0] = BlockType.Data # There are going to be few if any.
+    blocks -= 1
+    blocks_one_hot = one_hot(blocks)
+elif UNKNOWN == "neutral":
+    blocks_one_hot = one_hot_with_neutral(mem_graph.ndata["blocks"].long())
+
 blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
 mem_graph.ndata["blocks"] = blocks_one_hot.float()
 
