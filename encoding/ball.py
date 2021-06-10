@@ -242,7 +242,7 @@ class BallGraphBuilder(GraphBuilder):
         sorted_centroids, chunks, pointers = self._simulate_addresses(types_chunks, node_id_points_to)
 
         points_to_edges = _compute_pointer_edges(chunks, pointers)
-        precedes_edges = self._compute_precedes(sorted_centroids)
+        precedes_edges = self._compute_precedes_alt(sorted_centroids)
         follows_edges = precedes_edges[1], precedes_edges[0]  # Inverse of precedes
 
         # There might be nodes without any edges connected to them if they fit into a single ball and no other

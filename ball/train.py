@@ -6,6 +6,7 @@ import torch as t
 from torch.nn.functional import cross_entropy, one_hot
 from sklearn.model_selection import train_test_split
 import dgl
+from dgl.sampling import sample_neighbors
 from dgl.dataloading import MultiLayerFullNeighborSampler, NodeDataLoader
 from networks.embedding import MyConvolution
 from networks.utils import one_hot_with_neutral, add_self_loops
@@ -78,19 +79,39 @@ elif UNKNOWN == "neutral":
     blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
     batch_graph.ndata["blocks"] = blocks_one_hot.float()
 
+# TODO: Note to self: You are using different encoding mechanisms for sym and mem graphs here!
+fanout = {
+    "pointed_to_by": -1,  # If a node exists, it will point somewhere.
+    "precedes": 1,  # In a mem graph, there is one precedes at max
+    "follows": 1,  # In a mem graph, there is one follows at max
+    "is": -1,  # Removed all edges anyways
+}
+
+# Alternatively:
+"""
+all_edge_ids = {
+    etype: batch_graph.edge_ids(*batch_graph.edges(etype=etype), etpye=etype) for etype in batch_graph.etypes
+}
+"""
+
 
 for epoch in range(EPOCHS):
 
+    epoch_graph = sample_neighbors(batch_graph, np.arange(batch_graph.num_nodes()), fanout)
+    """ 
+    for etype in epoch_graph.etypes:
+        edge_index = np.random.randint(0, 2, epoch_graph.num_edges(etype))
+        epoch_graph.remove_edges(all_edge_ids[etype][edge_index])
+    """
     # Randomize unknown elements
     if UNKNOWN == "randomize":
-        random_blocks = t.randint(0, 3, original_blocks.shape, generator=gen, dtype=t.int8)
-        original_blocks[unknown_idx] = random_blocks[unknown_idx]
+        original_blocks[unknown_idx] = t.randint(0, 3, original_blocks.shape, generator=gen, dtype=t.int8)[unknown_idx]
         blocks_one_hot = one_hot(original_blocks.long()).reshape(original_blocks.shape[0], -1)
-        batch_graph.ndata["blocks"] = blocks_one_hot.float()
+        epoch_graph.ndata["blocks"] = blocks_one_hot.float()
 
-    epoch_results = t.full((batch_graph.num_nodes(), out_size), float("inf"), dtype=t.float32)
+    epoch_results = t.full((epoch_graph.num_nodes(), out_size), float("inf"), dtype=t.float32)
     sampler = MultiLayerFullNeighborSampler(BALL_CONV_LAYERS)
-    loader = NodeDataLoader(batch_graph, np.arange(batch_graph.num_nodes()), sampler, batch_size=BATCH_SIZE)
+    loader = NodeDataLoader(epoch_graph, np.arange(epoch_graph.num_nodes()), sampler, batch_size=BATCH_SIZE)
 
     for i, chunk in enumerate(loader):
         input_nodes, output_nodes, blocks = chunk
