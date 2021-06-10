@@ -10,7 +10,7 @@ from encoding import BlockType
 from hyperparams import UNKNOWN
 import develop.filter_warnings
 
-BATCH_SIZE = 3000
+BATCH_SIZE = 1000
 
 with open(MEM_GRAPH_PATH, "rb") as f:
     mem_graph = pickle.load(f)
