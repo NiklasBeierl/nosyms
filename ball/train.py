@@ -95,18 +95,18 @@ for epoch in range(EPOCHS):
     for i, chunk in enumerate(loader):
         input_nodes, output_nodes, blocks = chunk
         blocks = [b.to(dev) for b in blocks]
-        batch_labels = blocks[-1].dstdata[f"{TARGET_SYMBOL}_labels"]
+        batch_labels = blocks[-1].dstdata[f"{TARGET_SYMBOL}_labels"].long()
         batch_train_idx = blocks[-1].dstdata["train"]
         batch_logits = model.forward_batch(blocks)
         batch_loss = cross_entropy(batch_logits[batch_train_idx], batch_labels[batch_train_idx], weight=loss_weights)
         batch_pred = batch_logits.argmax(1)
-        epoch_results[output_nodes, :] = batch_logits.detach().cpu()
+        epoch_results[output_nodes.long(), :] = batch_logits.detach().cpu()
 
         opt.zero_grad()
         batch_loss.backward()
         opt.step()
 
-    loss = cross_entropy(epoch_results, labels, weight=loss_weights.cpu())
+    loss = cross_entropy(epoch_results, labels.long(), weight=loss_weights.cpu())
     pred = epoch_results.argmax(1)
     train_acc = (pred[train_idx] == labels[train_idx]).float().mean()
     test_acc = (pred[test_idx] == labels[test_idx]).float().mean()
