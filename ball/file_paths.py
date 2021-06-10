@@ -1,7 +1,7 @@
 from hyperparams import *
 
 SYMBOL_GLOB = "../symbols/all_syms/4*.json"
-SYM_DATA_PATH = f"./ball-sym-data-{BALL_RADIUS}.pkl"
+SYM_DATA_PATH = f"../symbols/ball-sym-data-{BALL_RADIUS}"
 MEM_GRAPH_PATH = f"./ball-mem-graph-{BALL_RADIUS}.pkl"
 
 model_name = f"ball-model-{BALL_RADIUS}-{BALL_CONV_LAYERS}-{EPOCHS}-{BATCH_SIZE}-{UNKNOWN}-{SELF_LOOPS}-{LEARNING_RATE}"
