@@ -3,7 +3,7 @@ import pickle
 from glob import glob
 from concurrent.futures import TimeoutError
 from pebble import ProcessPool
-from encoding import VolatilitySymbolsEncoder
+from encoding import VolatilitySymbolsEncoder, WordCompressor
 from encoding.ball import BallGraphBuilder
 from file_paths import SYM_DATA_PATH, SYMBOL_GLOB
 import develop.filter_warnings
@@ -15,6 +15,9 @@ POINTER_SIZE = 8
 DO_PARALLEL = False
 # Only used if DO_PARALLEL == True
 ENCODE_TIMEOUT = 120
+
+
+compressor = WordCompressor()
 
 
 def encode_sym_file(sym_path):
@@ -41,6 +44,7 @@ def encode_sym_file(sym_path):
     ball_encoder = BallGraphBuilder()
     graph, node_ids = ball_encoder.create_type_graph(sym_encoder)
 
+    graph.ndata["blocks"] = compressor.compress_batch(graph.ndata["blocks"])
     print(f"Done encoding: {sym_path}")
     return sym_path, graph, node_ids
 
