@@ -244,15 +244,19 @@ class BallGraphBuilder(GraphBuilder):
         points_to_edges = _compute_pointer_edges(chunks, pointers)
         precedes_edges = self._compute_precedes(sorted_centroids)
         follows_edges = precedes_edges[1], precedes_edges[0]  # Inverse of precedes
+
+        # There might be nodes without any edges connected to them if they fit into a single ball and no other
+        # type explicitly points to them. This might cause dgl to under-size the graph and then error when node
+        # features are assigned. This "useless" relationship is the only workaround I could find.
+        is_edges = t.arange(len(sorted_centroids), dtype=t.int32)
+        is_edges = is_edges, is_edges.clone()
+
         graph: DGLHeteroGraph = heterograph(
             {
                 ("chunk", "pointed_to_by", "chunk"): points_to_edges[::-1],
                 ("chunk", "precedes", "chunk"): precedes_edges,
                 ("chunk", "follows", "chunk"): follows_edges,
-                # There might be nodes without any edges connected to them if they fit into a single ball and no other
-                # type explicitly points to them. This might cause dgl to under-size the graph and then error when node
-                # features are assigned. This "useless" relationship is the only workaround I could find.
-                ("chunk", "is", "chunk"): (range(len(sorted_centroids)), range(len(sorted_centroids))),
+                ("chunk", "is", "chunk"): is_edges,
             }
         )
         graph.ndata["blocks"] = t.tensor(np.stack(block_vectors))
