@@ -4,6 +4,7 @@ import json
 from typing import Tuple, List, Set, Deque, Iterable, Dict, NamedTuple
 from warnings import warn
 from bidict import bidict, frozenbidict
+from interlap import InterLap
 import torch as t
 import numpy as np
 from dgl import DGLHeteroGraph, heterograph
@@ -109,38 +110,12 @@ def _compute_pointer_edges(chunks: List[Chunk], chunk_pointers: List[ChunkPointe
     :param chunk_pointers: List of Chunk Pointers.
     :return: Dgl adjacency describing the points_to relationship
     """
-
-    chunk_data = np.array(chunks, dtype=np.int64)
-    chunk_data = chunk_data[chunk_data[:, 2].argsort()].T  # Sort by chunk id
-
-    starts = chunk_data[0]
-    sorted_start_ids = np.argsort(starts)
-    starts.sort()  # Sort in place
-
-    ends = chunk_data[1]
-    sorted_end_ids = np.argsort(ends)
-    ends.sort()  # Sort in place
-
-    chunk_pointers = list(sorted(chunk_pointers, key=lambda c: c.target))
-    cp_targets = np.array([cp.target for cp in chunk_pointers])
-    start_indices = np.searchsorted(starts, cp_targets, side="right")  # starts[r[x]-1] <= cp[x] < starts[r[x]]
-    end_indices = np.searchsorted(ends, cp_targets, side="left")  # ends[r[x]-1] < cp[x] <= ends[r[x]]
-
-    edges: EdgeList = []
-
-    last_e = 0
-    last_s = 0
-    inside = set()
-    for cp, s, e in zip(chunk_pointers, start_indices, end_indices):
-        # starts[:s-1] <= cp < starts[s:]
-        inside.update(sorted_start_ids[last_s:s])
-        # ends[:e-1] < cp <= ends[:e]
-        inside.difference_update(sorted_end_ids[last_e:e])
-        for i in inside:
-            edges.append((cp.node_id, i))
-
-        last_e = e
-        last_s = s
+    inter = InterLap()
+    inter.update(chunks)
+    edges = []
+    for cp in chunk_pointers:
+        for _, _, tid in inter.find((cp.target, cp.target)):
+            edges.append((cp.node_id, tid))
 
     return _edge_list_to_dgl(edges)
 
