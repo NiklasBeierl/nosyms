@@ -13,20 +13,25 @@ from file_paths import SYM_DATA_PATH, MODEL_PATH
 from hyperparams import *
 import develop.filter_warnings
 
-with open(SYM_DATA_PATH, "rb") as f:
-    all_data = pickle.load(f)
-
 TARGET_SYMBOL = "task_struct"
 BINARY_CLASSIFY = True
 
-for path, graph, node_ids in all_data:
-    true_labels = np.zeros(graph.num_nodes())
+all_graphs = []
+all_syms = list(Path(SYM_DATA_PATH).glob("*.pkl"))
+all_syms = all_syms[::2]  # Need more RAM!
+print(f"Using: {all_syms}")
+for path in all_syms:
+    with open(path, "rb") as f:
+        graph, node_ids = pickle.load(f)
+    true_labels = np.zeros(graph.num_nodes(), dtype=np.int8)
     for i, n in node_ids.inv.items():
         if TARGET_SYMBOL in n.type_descriptor:  # TODO This is not he safest check, but it works for task_struct :)
             true_labels[i] = 1 if BINARY_CLASSIFY else i
-    graph.ndata[f"{TARGET_SYMBOL}_labels"] = t.tensor(true_labels).long()
+    graph.ndata[f"{TARGET_SYMBOL}_labels"] = t.tensor(true_labels)
+    all_graphs.append(graph)
 
-batch_graph = dgl.batch([g for _, g, _ in all_data])
+batch_graph = dgl.batch(all_graphs)
+del all_graphs  # Free Memory
 batch_graph = add_self_loops(batch_graph, etype=SELF_LOOPS)
 labels = batch_graph.ndata[f"{TARGET_SYMBOL}_labels"]
 
