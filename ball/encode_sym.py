@@ -13,9 +13,10 @@ TARGET_SYMBOL = "task_struct"
 POINTER_SIZE = 8
 
 
-# Note that this will also dictate memory consumption.
-# With RADIUS == 200 you should calculate 10GiB / core + some to spare.
-CORES = 6
+# Note that this will dictate memory consumption.
+# With RADIUS == 200 you should calculate 10 GiB/core + some to spare.
+# Some symbols (i.e. Ubuntu Kernel 5.x.x) also take 20 GiB/core \_(..)_/
+CORES = 2
 
 ENCODE_TIMEOUT = 240
 
