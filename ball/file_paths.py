@@ -1,6 +1,6 @@
 from hyperparams import *
 
-SYMBOL_GLOB = "../symbols/all_syms/4*.json"
+SYMBOL_GLOB = "../symbols/ubuntu/*.json"
 SYM_DATA_PATH = f"../symbols/ball-sym-data-{BALL_RADIUS}"
 MEM_GRAPH_PATH = f"./ball-mem-graph-{BALL_RADIUS}.pkl"
 

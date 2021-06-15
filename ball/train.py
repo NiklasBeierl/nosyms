@@ -19,8 +19,8 @@ TARGET_SYMBOL = "task_struct"
 BINARY_CLASSIFY = True
 
 all_graphs = []
-all_syms = list(Path(SYM_DATA_PATH).glob("*.pkl"))
-all_syms = all_syms[::2]  # Need more RAM!
+all_syms = list(Path(SYM_DATA_PATH).glob("vmlinux*.pkl"))
+all_syms = all_syms[::7]  # Need more RAM!
 print(f"Using: {all_syms}")
 for path in all_syms:
     with open(path, "rb") as f:
@@ -79,7 +79,6 @@ elif UNKNOWN == "neutral":
     blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
     batch_graph.ndata["blocks"] = blocks_one_hot.float()
 
-# TODO: Note to self: You are using different encoding mechanisms for sym and mem graphs here!
 fanout = {
     "pointed_to_by": -1,  # If a node exists, it will point somewhere.
     "precedes": 1,  # In a mem graph, there is one precedes at max
@@ -97,6 +96,7 @@ all_edge_ids = {
 
 for epoch in range(EPOCHS):
 
+    # Samples new precedes and follows nodes in every epoch
     epoch_graph = sample_neighbors(batch_graph, np.arange(batch_graph.num_nodes()), fanout)
     """ 
     for etype in epoch_graph.etypes:
@@ -108,6 +108,7 @@ for epoch in range(EPOCHS):
         original_blocks[unknown_idx] = t.randint(0, 3, original_blocks.shape, generator=gen, dtype=t.int8)[unknown_idx]
         blocks_one_hot = one_hot(original_blocks.long()).reshape(original_blocks.shape[0], -1)
         epoch_graph.ndata["blocks"] = blocks_one_hot.float()
+        del blocks_one_hot  # Free up memory
 
     epoch_results = t.full((epoch_graph.num_nodes(), out_size), float("inf"), dtype=t.float32)
     sampler = MultiLayerFullNeighborSampler(BALL_CONV_LAYERS)

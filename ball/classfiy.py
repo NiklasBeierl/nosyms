@@ -1,8 +1,7 @@
 import pickle
 import torch as t
-import numpy as np
 import dgl.dataloading as dgldl
-from torch.nn.functional import softmax, one_hot
+from torch.nn.functional import one_hot
 from hyperparams import BALL_CONV_LAYERS
 from networks.utils import one_hot_with_neutral, add_self_loops
 from file_paths import MODEL_PATH, MEM_GRAPH_PATH, RESULTS_PATH
