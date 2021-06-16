@@ -41,8 +41,8 @@ The easyiest way is to `peotry shell` into your venv after it was created with `
 `pip install dgl-cudaXX.X`  the cuda version of dgl.
 
 # Volatility3 Plugins
-## `pointer_scan.HighmemPointerScan` 
-... scans a memory snapshots "physical layer" for x86-64 "canonical" high mem pointers (8 byte aligned words with
+## `pointer_scan.KernelMemPointerScan` 
+... scans a memory snapshots "physical layer" for x86-64 "canonical" "kernel space" pointers (8 byte aligned words with
 bits 63-48 set to `1`). Then tries to translate them to a physical address. See 
 `volatility.framework.layers.intel.Intel32e.translate`. If translation is unsuccessful the _physical_ column for the 
 corresponding row is left blank. The output csv file with columns _offset_, _virtual_ and _physical_ is written to the 
@@ -53,7 +53,7 @@ Usage:
 vol \
 -p <this-project>/volatility_plugins/ \
 -f /path/to/memdump \
-pointer_scan.HighmemPointerScan \
+pointer_scan.KernelMemPointerScan \
 --outfile pointers.csv 
 ```
 

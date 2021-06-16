@@ -22,30 +22,31 @@ COLUMNS = [
 # DEFAULT_DTB_ADDR = 0x888000000000
 DEFAULT_DTB_ADDR = 0x1E0A000
 
-# Canonical 64 bit "high mem" pointers
+# Canonical 64 bit in the upper half of the address space
 # Using the infamous lookahead and zero-length capture to get overlapping matches.
 # https://stackoverflow.com/questions/5616822/python-regex-find-all-overlapping-matches
-HIGHMEM_POINTER_PATTERN = re.compile(b"(?=(.{5}[\x80-\xFF]\xFF\xFF))", flags=re.DOTALL)
+POINTER_PATTERN = re.compile(b"(?=(.{5}[\x80-\xFF]\xFF\xFF))", flags=re.DOTALL)
 POINTER_SIZE = 8
 CSV_SEP = ","
 CSV_COLUMNS = ["offset", "virtual", "physical"]
 
 
-class HighMemPointerScanner(ScannerInterface):
+class KernelMemPointerScanner(ScannerInterface):
     """
-    Looks for "high mem" pointers. (8 byte aligned little endian ints with bit 63 to 48 set to 1.)
+    Looks for pointers in the upper half of the virtual address space.
+    (8 byte aligned little endian ints with bit 63 to 48 set to 1.)
     """
 
     thread_safe = True
 
     def __call__(self, data: bytes, data_offset: int) -> Generator[int, None, None]:
-        for match in HIGHMEM_POINTER_PATTERN.finditer(data):
+        for match in POINTER_PATTERN.finditer(data):
             offset = match.start(1)
             if offset < self.chunk_size and offset % POINTER_SIZE == 0:
                 yield offset + data_offset
 
 
-class HighmemPointerScan(plugins.PluginInterface):
+class KernelMemPointerScan(plugins.PluginInterface):
     _required_framework_version = (1, 0, 0)
 
     @classmethod
@@ -116,7 +117,7 @@ class HighmemPointerScan(plugins.PluginInterface):
 
         for offset in layer.scan(
             context=self.context,
-            scanner=HighMemPointerScanner(),
+            scanner=KernelMemPointerScanner(),
             progress_callback=PrintedProgress(),
         ):
             address = struct.unpack("<Q", layer.read(offset, 8))[0]

@@ -69,12 +69,12 @@ class PsListWithPointers(interfaces.plugins.PluginInterface):
                 ppid = task.parent.pid
             virtual = task.vol["offset"]
             physical, _ = layer.translate(virtual)
-            if virtual & (reverse_address_mask >> 1):  # Is it a highmem address?
+            if virtual & (reverse_address_mask >> 1):
                 virtual |= reverse_address_mask
             name = utility.array_to_string(task.comm)
             next_v = task.tasks.next
             next_p, _ = layer.translate(next_v)
-            if next_v & (reverse_address_mask >> 1):  # Is it a highmem address?
+            if next_v & (reverse_address_mask >> 1):
                 next_v |= reverse_address_mask
             yield 0, (virtual, physical, pid, ppid, name, next_v, next_p)
 
