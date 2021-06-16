@@ -3,10 +3,9 @@ import torch as t
 import dgl.dataloading as dgldl
 from torch.nn.functional import one_hot
 from hyperparams import BALL_CONV_LAYERS
-from nn.utils import one_hot_with_neutral, add_self_loops
+from nosyms.nn.utils import add_self_loops
 from file_paths import MODEL_PATH, MEM_GRAPH_PATH, RESULTS_PATH
-from encoding import BlockType
-from hyperparams import UNKNOWN
+from nosyms.encoding import BlockType
 import develop.filter_warnings
 
 BATCH_SIZE = 1000
@@ -19,14 +18,12 @@ with open(MODEL_PATH, "rb") as f:
     model.training = False
 
 mem_graph = add_self_loops(mem_graph)
-if UNKNOWN == "randomize":
-    blocks = mem_graph.ndata["blocks"].long()
-    blocks[blocks == 0] = BlockType.Data  # There are going to be few if any.
-    blocks -= 1
-    blocks_one_hot = one_hot(blocks)
-elif UNKNOWN == "neutral":
-    blocks_one_hot = one_hot_with_neutral(mem_graph.ndata["blocks"].long())
 
+blocks = mem_graph.ndata["blocks"]
+unknown_idx = blocks == BlockType.Unknown.value
+blocks -= 1
+blocks[unknown_idx] = t.randint(0, 3, blocks.shape, dtype=t.int8)[unknown_idx]  # There are going to be few if any.
+blocks_one_hot = one_hot(blocks.long())
 blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
 mem_graph.ndata["blocks"] = blocks_one_hot.float()
 
@@ -45,7 +42,7 @@ for i, chunk in enumerate(loader):
     input_nodes, output_nodes, blocks = chunk
     blocks = [b.to(t.device("cuda")) for b in blocks]
     batch_result = model.forward_batch(blocks)
-    results[output_nodes, :] = batch_result.detach().cpu()
+    results[output_nodes.long(), :] = batch_result.detach().cpu()
     perc = BATCH_SIZE * i * 100 // mem_graph.num_nodes()
     if perc % 5 == 0 and perc != last_prec_done:
         print(f"{perc}% done.")

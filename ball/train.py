@@ -10,7 +10,7 @@ import dgl
 from dgl.sampling import sample_neighbors
 from dgl.dataloading import MultiLayerFullNeighborSampler, NodeDataLoader
 from nosyms.nn.models import MyConvolution
-from nosyms.nn.utils import one_hot_with_neutral, add_self_loops
+from nosyms.nn.utils import add_self_loops
 from nosyms.encoding import BlockType
 from file_paths import SYM_DATA_PATH, MODEL_PATH
 from hyperparams import *
@@ -23,6 +23,7 @@ print(f"Training start time: {dt.datetime.now()}")
 
 all_graphs = []
 all_syms = list(Path(SYM_DATA_PATH).glob("vmlinux*.pkl"))
+all_syms = all_syms[:1]
 print(f"Using: {all_syms}")
 for path in all_syms:
     with open(path, "rb") as f:
@@ -70,16 +71,11 @@ if t.cuda.is_available():
     model.cuda(dev)
     loss_weights = loss_weights.cuda(dev)
 
-if UNKNOWN == "randomize":
-    gen = t.Generator().manual_seed(90324590320)
-    unknown_idx = batch_graph.ndata["blocks"] == 0
-    # Subtracting one since the 0 class will be "randomized away"
-    original_blocks = batch_graph.ndata["blocks"].clone() - 1
 
-elif UNKNOWN == "neutral":
-    blocks_one_hot = one_hot_with_neutral(batch_graph.ndata["blocks"].long())
-    blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
-    batch_graph.ndata["blocks"] = blocks_one_hot.float()
+gen = t.Generator().manual_seed(90324590320)
+unknown_idx = batch_graph.ndata["blocks"] == BlockType.Unknown.value
+# Subtracting one since the 0 class will be "randomized away"
+original_blocks = batch_graph.ndata["blocks"].clone() - 1
 
 fanout = {
     "pointed_to_by": -1,  # If a node exists, it will point somewhere.
@@ -88,29 +84,17 @@ fanout = {
     "is": -1,  # Removed all edges anyways
 }
 
-# Alternatively:
-"""
-all_edge_ids = {
-    etype: batch_graph.edge_ids(*batch_graph.edges(etype=etype), etpye=etype) for etype in batch_graph.etypes
-}
-"""
-
 
 for epoch in range(EPOCHS):
 
-    # Samples new precedes and follows nodes in every epoch
+    # Samples new precedes and follows nodes
     epoch_graph = sample_neighbors(batch_graph, np.arange(batch_graph.num_nodes()), fanout)
-    """ 
-    for etype in epoch_graph.etypes:
-        edge_index = np.random.randint(0, 2, epoch_graph.num_edges(etype))
-        epoch_graph.remove_edges(all_edge_ids[etype][edge_index])
-    """
+
     # Randomize unknown elements
-    if UNKNOWN == "randomize":
-        original_blocks[unknown_idx] = t.randint(0, 3, original_blocks.shape, generator=gen, dtype=t.int8)[unknown_idx]
-        blocks_one_hot = one_hot(original_blocks.long()).reshape(original_blocks.shape[0], -1)
-        epoch_graph.ndata["blocks"] = blocks_one_hot.float()
-        del blocks_one_hot  # Free up memory
+    original_blocks[unknown_idx] = t.randint(0, 3, original_blocks.shape, generator=gen, dtype=t.int8)[unknown_idx]
+    blocks_one_hot = one_hot(original_blocks.long()).reshape(original_blocks.shape[0], -1)
+    epoch_graph.ndata["blocks"] = blocks_one_hot.float()
+    del blocks_one_hot  # Free up memory
 
     epoch_results = t.full((epoch_graph.num_nodes(), out_size), float("inf"), dtype=t.float32)
     sampler = MultiLayerFullNeighborSampler(BALL_CONV_LAYERS)
