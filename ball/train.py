@@ -64,10 +64,14 @@ for path in all_syms:
     graph.remove_edges(graph.edge_ids(*graph.edges(etype="is"), etype="is"), etype="is")
     graph.remove_edges(graph.edge_ids(*graph.edges(etype="is"), etype="is"), etype="is")
 
-    graph.ndata["original_blocks"] = graph.ndata["blocks"].clone()
+    graph.ndata["unknown"] = graph.ndata["blocks"] == BlockType.Unknown.value
+    graph.ndata["original_blocks"] = graph.ndata["blocks"].clone() - 1
     del graph.ndata["blocks"]
 
-    all_graphs.append((graph, offset, offset + graph.num_nodes()))
+    new_path = str(path.with_suffix(".dgl"))
+    dgl.save_graphs(new_path, graph)
+
+    all_graphs.append((new_path, offset, offset + graph.num_nodes()))
     labels = np.concatenate([labels, local_labels])
 
 print("Done loading.")
@@ -83,8 +87,12 @@ train_idx, test_idx = train_test_split(index, random_state=33, train_size=0.7, s
 full_train_idx = np.zeros(num_nodes, dtype=bool)
 full_train_idx[train_idx] = True
 
-for graph, start_idx, end_idx in all_graphs:
-    graph.ndata["train"] = t.tensor(full_train_idx[start_idx:end_idx])
+for path, start_idx, end_idx in all_graphs:
+    graph = dgl.load_graphs(path)[0][0]
+    graph.ndata["train"] = t.tensor(full_train_idx[start_idx:end_idx], dtype=t.bool)
+    dgl.save_graphs(path, graph)
+
+print("Done labeling.")
 
 opt = t.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
 best_test_acc = 0
@@ -104,10 +112,10 @@ if t.cuda.is_available():
     loss_weights = loss_weights.cuda(dev)
 
 
-def prepare_graph(graph, start_idx, end_idx):
-    unknown_idx = graph.ndata["original_blocks"] == BlockType.Unknown.value
-    blocks = graph.ndata["original_blocks"].clone()
-    blocks -= 1
+def prepare_graph(path):
+    graph = dgl.load_graphs(path)[0][0]
+    unknown_idx = graph.ndata["unknown"].bool()
+    blocks = graph.ndata["original_blocks"]
     blocks[unknown_idx] = t.randint(0, 3, blocks.shape, generator=gen, dtype=t.int8)[unknown_idx]
     blocks = one_hot(blocks.long()).reshape(blocks.shape[0], -1)
     graph.ndata["blocks"] = blocks.float()
@@ -120,7 +128,7 @@ for epoch in range(EPOCHS):
     epoch_results = t.full((num_nodes, out_size), float("inf"), dtype=t.float32)
 
     for graph, start_idx, end_idx in all_graphs:
-        graph = prepare_graph(graph, start_idx, end_idx)
+        graph = prepare_graph(graph)
         graph = sample_neighbors(graph, np.arange(graph.num_nodes()), FANOUT)
 
         sampler = MultiLayerFullNeighborSampler(BALL_CONV_LAYERS)
@@ -132,7 +140,7 @@ for epoch in range(EPOCHS):
             batch_train_idx = blocks[-1].dstdata["train"]
             batch_logits = model.forward_batch(blocks)
             batch_loss = cross_entropy(
-                batch_logits[batch_train_idx], batch_labels[batch_train_idx], weight=loss_weights
+                batch_logits[batch_train_idx.bool()], batch_labels[batch_train_idx.bool()], weight=loss_weights
             )
             batch_pred = batch_logits.argmax(1)
             output_nodes = output_nodes.clone() + start_idx
