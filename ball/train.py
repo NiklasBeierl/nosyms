@@ -54,11 +54,23 @@ for path in all_syms:
         if json.dumps({"kind": "struct", "name": TARGET_SYMBOL}) == n.type_descriptor:
             local_labels[i] = 1 if BINARY_CLASSIFY else i
 
+    graph.ndata[f"{TARGET_SYMBOL}_labels"] = t.tensor(local_labels, dtype=t.int8)
     offset = len(labels)
-    all_graphs.append((path, offset, offset + graph.num_nodes()))
+
+    graph = add_self_loops(graph, etype=SELF_LOOPS)
+
+    # https://github.com/dmlc/dgl/issues/2310
+    # https://github.com/dmlc/dgl/issues/3003
+    graph.remove_edges(graph.edge_ids(*graph.edges(etype="is"), etype="is"), etype="is")
+    graph.remove_edges(graph.edge_ids(*graph.edges(etype="is"), etype="is"), etype="is")
+
+    graph.ndata["original_blocks"] = graph.ndata["blocks"].clone()
+    del graph.ndata["blocks"]
+
+    all_graphs.append((graph, offset, offset + graph.num_nodes()))
     labels = np.concatenate([labels, local_labels])
 
-
+print("Done loading.")
 num_nodes = len(labels)
 out_size = int(max(labels) + 1)
 hidden_size = int(np.median([in_size, out_size]))
@@ -70,6 +82,9 @@ index = np.array(range(num_nodes))
 train_idx, test_idx = train_test_split(index, random_state=33, train_size=0.7, stratify=labels)
 full_train_idx = np.zeros(num_nodes, dtype=bool)
 full_train_idx[train_idx] = True
+
+for graph, start_idx, end_idx in all_graphs:
+    graph.ndata["train"] = t.tensor(full_train_idx[start_idx:end_idx])
 
 opt = t.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
 best_test_acc = 0
@@ -89,22 +104,10 @@ if t.cuda.is_available():
     loss_weights = loss_weights.cuda(dev)
 
 
-def prepare_graph(path, start_idx, end_idx):
-    with open(path, "rb") as f:
-        graph, _ = pickle.load(f)
-    graph = add_self_loops(graph, etype=SELF_LOOPS)
-
-    # https://github.com/dmlc/dgl/issues/2310
-    # https://github.com/dmlc/dgl/issues/3003
-    graph.remove_edges(graph.edge_ids(*graph.edges(etype="is"), etype="is"), etype="is")
-    graph.remove_edges(graph.edge_ids(*graph.edges(etype="is"), etype="is"), etype="is")
-
-    graph.ndata["train"] = t.tensor(full_train_idx[start_idx:end_idx])
-
-    graph.ndata[f"{TARGET_SYMBOL}_labels"] = labels[start_idx:end_idx]
-
-    unknown_idx = graph.ndata["blocks"] == BlockType.Unknown.value
-    blocks = graph.ndata["blocks"] - 1
+def prepare_graph(graph, start_idx, end_idx):
+    unknown_idx = graph.ndata["original_blocks"] == BlockType.Unknown.value
+    blocks = graph.ndata["original_blocks"].clone()
+    blocks -= 1
     blocks[unknown_idx] = t.randint(0, 3, blocks.shape, generator=gen, dtype=t.int8)[unknown_idx]
     blocks = one_hot(blocks.long()).reshape(blocks.shape[0], -1)
     graph.ndata["blocks"] = blocks.float()
@@ -116,8 +119,8 @@ for epoch in range(EPOCHS):
 
     epoch_results = t.full((num_nodes, out_size), float("inf"), dtype=t.float32)
 
-    for path, start_idx, end_idx in all_graphs:
-        graph = prepare_graph(path, start_idx, end_idx)
+    for graph, start_idx, end_idx in all_graphs:
+        graph = prepare_graph(graph, start_idx, end_idx)
         graph = sample_neighbors(graph, np.arange(graph.num_nodes()), FANOUT)
 
         sampler = MultiLayerFullNeighborSampler(BALL_CONV_LAYERS)
