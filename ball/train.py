@@ -44,7 +44,7 @@ out_size = int(max(labels) + 1)
 hidden_size = int(np.median([in_size, out_size]))
 
 model_etypes = ["follows", "precedes", "pointed_to_by"]  # Ignoring the "is" relationship
-model = MyConvolution(model_etypes, in_size, hidden_size, out_size)
+model = MyConvolution(model_etypes, BALL_CONV_LAYERS, in_size, hidden_size, out_size)
 # https://github.com/dmlc/dgl/issues/2310
 # https://github.com/dmlc/dgl/issues/3003
 batch_graph.remove_edges(batch_graph.edge_ids(*batch_graph.edges(etype="is"), etype="is"), etype="is")

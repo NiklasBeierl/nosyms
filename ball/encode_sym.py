@@ -7,6 +7,7 @@ from pebble import ProcessPool
 from nosyms.encoding import VolatilitySymbolsEncoder, WordCompressor
 from nosyms.encoding.ball import BallGraphBuilder
 from file_paths import SYM_DATA_PATH, SYMBOL_GLOB
+from hyperparams import BALL_RADIUS
 import develop.filter_warnings
 
 TARGET_SYMBOL = "task_struct"
@@ -47,8 +48,8 @@ def encode_sym_file(sym_path):
         del syms["user_types"]["unnamed_a315a22bd125afd5"]
 
     sym_encoder = VolatilitySymbolsEncoder(syms)
-    ball_encoder = BallGraphBuilder()
-    graph, node_ids = ball_encoder.create_type_graph(sym_encoder)
+    bgb = BallGraphBuilder(radius=BALL_RADIUS)
+    graph, node_ids = bgb.create_type_graph(sym_encoder)
 
     graph.ndata["blocks"] = compressor.compress_batch(graph.ndata["blocks"])
     out_path = Path(SYM_DATA_PATH, Path(sym_path).name).with_suffix(".pkl")

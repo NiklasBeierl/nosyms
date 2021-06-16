@@ -9,14 +9,15 @@ from nosyms.encoding.ball import BallEncoder, BallGraphBuilder
 from nosyms.encoding import WordCompressor
 from file_paths import MATCHING_SYMBOLS_PATH, MEM_GRAPH_PATH, TASKS_CSV_PATH, POINTER_CSV_PATH, RAW_DUMP_PATH
 from warnings import warn
+from hyperparams import BALL_RADIUS
 import develop.filter_warnings
 
 pointers_df = pd.read_csv(POINTER_CSV_PATH).dropna()
 pointers_df.physical = pointers_df.physical.astype(int)
 pointers = [Pointer(o, t) for o, t in pointers_df[["offset", "physical"]].itertuples(index=False)]
 
-encoder = BallEncoder(RAW_DUMP_PATH, pointers=[p.offset for p in pointers], pointer_size=8)
-bgb = BallGraphBuilder()
+encoder = BallEncoder(RAW_DUMP_PATH, pointers=[p.offset for p in pointers], pointer_size=8, radius=BALL_RADIUS)
+bgb = BallGraphBuilder(radius=BALL_RADIUS)
 comp = WordCompressor()
 
 mem_graph = bgb.create_snapshot_graph(encoder, pointers, comp)

@@ -19,7 +19,6 @@ from nosyms.encoding import (
 )
 from nosyms.encoding.symbol_blocks import UndefinedTypeError
 from nosyms.encoding.block_types import blocks_to_numpy
-from hyperparams import BALL_RADIUS
 
 # https://docs.dgl.ai/en/0.6.x/generated/dgl.heterograph.html?highlight=heterograph#dgl-heterograph
 DglAdjacency = Tuple[Iterable[int], Iterable[int]]
@@ -72,7 +71,7 @@ class BallEncoder(MemoryEncoder):
     Encodes the immediate surroundings of given offset. (Usually the offset of a pointer)
     """
 
-    def __init__(self, *args, pointers: List[int], radius: int = BALL_RADIUS, **kwargs):
+    def __init__(self, *args, pointers: List[int], radius: int, **kwargs):
         super().__init__(*args, **kwargs)
         self.pointers = pointers
         self.radius = radius
@@ -121,7 +120,7 @@ def _compute_pointer_edges(chunks: List[Chunk], chunk_pointers: List[ChunkPointe
 
 
 class BallGraphBuilder(GraphBuilder):
-    def __init__(self, *args, radius: int = BALL_RADIUS, **kwargs):
+    def __init__(self, *args, radius: int, **kwargs):
         super(BallGraphBuilder, self).__init__(*args, **kwargs)
         self.radius = radius
 

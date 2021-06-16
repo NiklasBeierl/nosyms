@@ -1,11 +1,11 @@
+from typing import List
 from torch.nn import ModuleList, Module, Linear
 from torch.nn import functional as F
 from dgl.nn.pytorch import GraphConv, HeteroGraphConv
-from hyperparams import BALL_CONV_LAYERS
 
 
 class MyConvolution(Module):
-    def __init__(self, etypes, in_size, hidden_size, out_size):
+    def __init__(self, etypes: List[str], conv_layers: int, in_size: int, hidden_size: int, out_size: int):
         super(MyConvolution, self).__init__()
         self.training = True
         self.conv_layers = ModuleList(
@@ -17,7 +17,7 @@ class MyConvolution(Module):
                     },
                     aggregate="mean",
                 )
-                for _ in range(BALL_CONV_LAYERS)
+                for _ in range(conv_layers)
             ]
         )
         sizes = [in_size, hidden_size, out_size]
