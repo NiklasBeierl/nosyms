@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 from typing import NamedTuple, Tuple, List
 from bidict import frozenbidict
 from dgl import DGLHeteroGraph
-from encoding.block_types import BlockType, BlockCompressor, WordCompressor
-from encoding.memory_blocks import MemoryEncoder
-from encoding.symbol_blocks import VolatilitySymbolsEncoder
+from nosyms.encoding.block_types import BlockType, BlockCompressor, WordCompressor
+from nosyms.encoding.memory_blocks import MemoryEncoder
+from nosyms.encoding.symbol_blocks import VolatilitySymbolsEncoder
 
 
 class SymbolNodeId(NamedTuple):

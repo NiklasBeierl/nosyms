@@ -4,8 +4,8 @@ from pathlib import Path
 from glob import glob
 from concurrent.futures import TimeoutError
 from pebble import ProcessPool
-from encoding import VolatilitySymbolsEncoder, WordCompressor
-from encoding.ball import BallGraphBuilder
+from nosyms.encoding import VolatilitySymbolsEncoder, WordCompressor
+from nosyms.encoding.ball import BallGraphBuilder
 from file_paths import SYM_DATA_PATH, SYMBOL_GLOB
 import develop.filter_warnings
 
@@ -16,7 +16,7 @@ POINTER_SIZE = 8
 # Note that this will dictate memory consumption.
 # With RADIUS == 200 you should calculate 10 GiB/core + some to spare.
 # Some symbols (i.e. Ubuntu Kernel 5.x.x) also take 20 GiB/core \_(..)_/
-CORES = 2
+CORES = 1
 
 ENCODE_TIMEOUT = 240
 

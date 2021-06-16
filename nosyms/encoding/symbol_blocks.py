@@ -3,8 +3,8 @@ from collections import defaultdict
 from functools import cached_property, lru_cache
 from warnings import warn
 from typing import List, Union, Tuple, Callable, Dict
-from encoding import BlockType
 from humanize import naturalsize
+from nosyms.encoding import BlockType
 
 # Every base type has to have one of these "kinds".
 # Reference: volatility/schemas/schema-6.2.0.json:definitions.element_base_type

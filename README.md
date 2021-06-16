@@ -1,14 +1,25 @@
 # About
+The code in this repo is two things:  
+Experiments conducted for my bachelor thesis, I will add a link to the PDF once I finalized it.  
 
-// TODO
+And secondly it's a small library with tools that allow processing debugging symbols and memory snapshots with neural 
+networks. More specifically, it allows encoding `struct` definitions from 
+[Volatilty3](https://github.com/volatilityfoundation/volatility3) symbol json files, as well as actual memory snapshots 
+as [DGL](dgl.ai) graphs. 
+If that sounds like something you want to dive into, the best place to get started is probably the thesis mentioned 
+above. Or you can of course just dive into the code itself:
 
-# Repo / File structure:
-- `encoding`: Stuff needed to encode Memory Snapshots and Volatility Symbols into graphs
-- `networks`: NN related code (pytorch models)
-- `ball`: Code for experimenting with ball encoding
-  - I mostly run my code in a debugger and inspect the variables directly. I would encourage you to do the same.
-- `data_dump` / `symbols` Where I keep my memory snapshot data and volatility3 symbols. They are not checked into git. 
-  You can get the files used in my experiments from 
+
+# File / package structure:
+- `nosyms.encoding`: Encode Memory Snapshots and Volatility Symbols into dgl graphs
+- `nosyms.encoding.ball`: Implementation of the encoding mechanism used in my experiments
+- `nosyms.nn`: NN stuff: Models / Some utils
+- `nosyms.symbol_analysis`: Some utils to analyze batches of Volatility3 symbol json files.
+  (Check `ball/data_analysis.py` for usage examples.)
+- `./ball`: Scripts for my experiments with ball encoding (Take a look there to see how `nosyms` is used.) 
+  - Note: I mostly run this code "interactively". I would encourage you to do the same.
+- `./data_dump` / `./symbols` Where I keep my memory snapshot data and volatility3 symbols. 
+  They are not checked into git, since they are huge files. You can get the files used in my experiments from 
   [my dropbox](https://www.dropbox.com/sh/iouddhc3zzut0xy/AACcREb-8JiESOntFIv59XjHa?dl=0).
   
 # Setup

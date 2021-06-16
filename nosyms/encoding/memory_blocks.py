@@ -2,7 +2,7 @@ import mmap
 from abc import ABC, abstractmethod
 from functools import cached_property
 import numpy as np
-from encoding import BlockType
+from nosyms.encoding import BlockType
 
 
 class MemoryEncoder(ABC):

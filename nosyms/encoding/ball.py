@@ -8,7 +8,7 @@ from interlap import InterLap
 import torch as t
 import numpy as np
 from dgl import DGLHeteroGraph, heterograph
-from encoding import (
+from nosyms.encoding import (
     BlockType,
     SymbolNodeId,
     Pointer,
@@ -17,8 +17,8 @@ from encoding import (
     VolatilitySymbolsEncoder,
     BlockCompressor,
 )
-from encoding.symbol_blocks import UndefinedTypeError
-from encoding.block_types import blocks_to_numpy
+from nosyms.encoding.symbol_blocks import UndefinedTypeError
+from nosyms.encoding.block_types import blocks_to_numpy
 from hyperparams import BALL_RADIUS
 
 # https://docs.dgl.ai/en/0.6.x/generated/dgl.heterograph.html?highlight=heterograph#dgl-heterograph

@@ -1,6 +1,7 @@
 import pickle
 from collections import Counter
 from pathlib import Path
+import datetime as dt
 import numpy as np
 import torch as t
 from torch.nn.functional import cross_entropy, one_hot
@@ -8,9 +9,9 @@ from sklearn.model_selection import train_test_split
 import dgl
 from dgl.sampling import sample_neighbors
 from dgl.dataloading import MultiLayerFullNeighborSampler, NodeDataLoader
-from networks.embedding import MyConvolution
-from networks.utils import one_hot_with_neutral, add_self_loops
-from encoding import BlockType
+from nosyms.nn.models import MyConvolution
+from nosyms.nn.utils import one_hot_with_neutral, add_self_loops
+from nosyms.encoding import BlockType
 from file_paths import SYM_DATA_PATH, MODEL_PATH
 from hyperparams import *
 import develop.filter_warnings
@@ -18,9 +19,10 @@ import develop.filter_warnings
 TARGET_SYMBOL = "task_struct"
 BINARY_CLASSIFY = True
 
+print(f"Training start time: {dt.datetime.now()}")
+
 all_graphs = []
 all_syms = list(Path(SYM_DATA_PATH).glob("vmlinux*.pkl"))
-all_syms = all_syms[::7]  # Need more RAM!
 print(f"Using: {all_syms}")
 for path in all_syms:
     with open(path, "rb") as f:

@@ -1,6 +1,6 @@
 import json
 from glob import glob
-from symbol_analysis import get_symbols_batch_stats, get_symbols_batch_user_type_stats, json_load
+from nosyms.symbol_analysis import get_symbols_batch_stats, get_symbols_batch_user_type_stats, json_load
 from file_paths import SYMBOL_GLOB, MATCHING_SYMBOLS_PATH
 from hyperparams import BALL_RADIUS
 
@@ -17,8 +17,8 @@ weird_type = syms_with_weird_type["user_types"]["unnamed_a315a22bd125afd5"]
 # See encode_sym.py to see how to "ignore" a type by deleting it from the symbols before encoding them. :)
 
 # Taking a look at the task struct:
-from encoding import VolatilitySymbolsEncoder
-from encoding.ball import BallGraphBuilder
+from nosyms.encoding import VolatilitySymbolsEncoder
+from nosyms.encoding.ball import BallGraphBuilder
 
 with open(MATCHING_SYMBOLS_PATH, "r") as f:
     real_syms = json.load(f)

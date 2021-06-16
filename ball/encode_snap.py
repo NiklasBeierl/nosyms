@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import torch as t
 from interlap import InterLap
-from encoding import Pointer
-from encoding.ball import BallEncoder, BallGraphBuilder
-from encoding import WordCompressor
+from nosyms.encoding import Pointer
+from nosyms.encoding.ball import BallEncoder, BallGraphBuilder
+from nosyms.encoding import WordCompressor
 from file_paths import MATCHING_SYMBOLS_PATH, MEM_GRAPH_PATH, TASKS_CSV_PATH, POINTER_CSV_PATH, RAW_DUMP_PATH
 from warnings import warn
 import develop.filter_warnings
