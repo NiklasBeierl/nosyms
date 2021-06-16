@@ -1,4 +1,5 @@
 import pickle
+import json
 from collections import Counter
 from pathlib import Path
 import datetime as dt
@@ -30,7 +31,7 @@ for path in all_syms:
         graph, node_ids = pickle.load(f)
     true_labels = np.zeros(graph.num_nodes(), dtype=np.int8)
     for i, n in node_ids.inv.items():
-        if TARGET_SYMBOL in n.type_descriptor:  # TODO This is not he safest check, but it works for task_struct :)
+        if json.dumps({"kind": "struct", "name": TARGET_SYMBOL}) == n.type_descriptor:
             true_labels[i] = 1 if BINARY_CLASSIFY else i
     graph.ndata[f"{TARGET_SYMBOL}_labels"] = t.tensor(true_labels)
     all_graphs.append(graph)
