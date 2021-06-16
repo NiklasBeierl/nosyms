@@ -21,7 +21,7 @@ with open(MODEL_PATH, "rb") as f:
 mem_graph = add_self_loops(mem_graph)
 if UNKNOWN == "randomize":
     blocks = mem_graph.ndata["blocks"].long()
-    blocks[blocks == 0] = BlockType.Data # There are going to be few if any.
+    blocks[blocks == 0] = BlockType.Data  # There are going to be few if any.
     blocks -= 1
     blocks_one_hot = one_hot(blocks)
 elif UNKNOWN == "neutral":
