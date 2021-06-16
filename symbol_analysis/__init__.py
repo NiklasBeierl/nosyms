@@ -11,6 +11,11 @@ def json_load(p):
 
 
 def get_user_type_sizes(syms: Dict) -> Dict[str, int]:
+    """
+    Get a dict mapping each user_type from
+    :param syms:
+    :return:
+    """
     return {name: ut["size"] for name, ut in syms["user_types"].items()}
 
 
@@ -23,6 +28,11 @@ _SYMBOLS_BATCH_STATS_COLS = {
 
 
 def get_symbols_batch_stats(paths: Iterable[str]) -> pd.DataFrame:
+    """
+    Get some stats about a batch of symbol files.
+    :param paths: paths of symbol files
+    :return: Pandas Data Frame
+    """
     rows: List[Tuple] = []
     for path in paths:
         syms = json_load(path)
@@ -40,6 +50,11 @@ _SYMBOLS_BATCH_USER_TYPE_STATS_COLS = {
 
 
 def get_symbols_batch_user_type_stats(paths: Iterable[str]) -> pd.DataFrame:
+    """
+    Get some stats about user types in a batch of symbol files.
+    :param paths: paths of symbol files
+    :return: Pandas Data Frame
+    """
     user_type_sizes = defaultdict(list)
     for path in paths:
         syms = json_load(path)

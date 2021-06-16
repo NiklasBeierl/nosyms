@@ -1,10 +1,12 @@
 import pickle
 from collections import Counter
+from pathlib import Path
 import numpy as np
 import torch as t
 from torch.nn.functional import cross_entropy, one_hot
 from sklearn.model_selection import train_test_split
 import dgl
+from dgl.sampling import sample_neighbors
 from dgl.dataloading import MultiLayerFullNeighborSampler, NodeDataLoader
 from networks.embedding import MyConvolution
 from networks.utils import one_hot_with_neutral, add_self_loops
@@ -13,20 +15,25 @@ from file_paths import SYM_DATA_PATH, MODEL_PATH
 from hyperparams import *
 import develop.filter_warnings
 
-with open(SYM_DATA_PATH, "rb") as f:
-    all_data = pickle.load(f)
-
 TARGET_SYMBOL = "task_struct"
 BINARY_CLASSIFY = True
 
-for path, graph, node_ids in all_data:
-    true_labels = np.zeros(graph.num_nodes())
+all_graphs = []
+all_syms = list(Path(SYM_DATA_PATH).glob("vmlinux*.pkl"))
+all_syms = all_syms[::7]  # Need more RAM!
+print(f"Using: {all_syms}")
+for path in all_syms:
+    with open(path, "rb") as f:
+        graph, node_ids = pickle.load(f)
+    true_labels = np.zeros(graph.num_nodes(), dtype=np.int8)
     for i, n in node_ids.inv.items():
         if TARGET_SYMBOL in n.type_descriptor:  # TODO This is not he safest check, but it works for task_struct :)
             true_labels[i] = 1 if BINARY_CLASSIFY else i
-    graph.ndata[f"{TARGET_SYMBOL}_labels"] = t.tensor(true_labels).long()
+    graph.ndata[f"{TARGET_SYMBOL}_labels"] = t.tensor(true_labels)
+    all_graphs.append(graph)
 
-batch_graph = dgl.batch([g for _, g, _ in all_data])
+batch_graph = dgl.batch(all_graphs)
+del all_graphs  # Free Memory
 batch_graph = add_self_loops(batch_graph, etype=SELF_LOOPS)
 labels = batch_graph.ndata[f"{TARGET_SYMBOL}_labels"]
 
@@ -72,35 +79,56 @@ elif UNKNOWN == "neutral":
     blocks_one_hot = blocks_one_hot.reshape(blocks_one_hot.shape[0], -1)
     batch_graph.ndata["blocks"] = blocks_one_hot.float()
 
+fanout = {
+    "pointed_to_by": -1,  # If a node exists, it will point somewhere.
+    "precedes": 1,  # In a mem graph, there is one precedes at max
+    "follows": 1,  # In a mem graph, there is one follows at max
+    "is": -1,  # Removed all edges anyways
+}
+
+# Alternatively:
+"""
+all_edge_ids = {
+    etype: batch_graph.edge_ids(*batch_graph.edges(etype=etype), etpye=etype) for etype in batch_graph.etypes
+}
+"""
+
 
 for epoch in range(EPOCHS):
 
+    # Samples new precedes and follows nodes in every epoch
+    epoch_graph = sample_neighbors(batch_graph, np.arange(batch_graph.num_nodes()), fanout)
+    """ 
+    for etype in epoch_graph.etypes:
+        edge_index = np.random.randint(0, 2, epoch_graph.num_edges(etype))
+        epoch_graph.remove_edges(all_edge_ids[etype][edge_index])
+    """
     # Randomize unknown elements
     if UNKNOWN == "randomize":
-        random_blocks = t.randint(0, 3, original_blocks.shape, generator=gen, dtype=t.int8)
-        original_blocks[unknown_idx] = random_blocks[unknown_idx]
+        original_blocks[unknown_idx] = t.randint(0, 3, original_blocks.shape, generator=gen, dtype=t.int8)[unknown_idx]
         blocks_one_hot = one_hot(original_blocks.long()).reshape(original_blocks.shape[0], -1)
-        batch_graph.ndata["blocks"] = blocks_one_hot.float()
+        epoch_graph.ndata["blocks"] = blocks_one_hot.float()
+        del blocks_one_hot  # Free up memory
 
-    epoch_results = t.full((batch_graph.num_nodes(), out_size), float("inf"), dtype=t.float32)
+    epoch_results = t.full((epoch_graph.num_nodes(), out_size), float("inf"), dtype=t.float32)
     sampler = MultiLayerFullNeighborSampler(BALL_CONV_LAYERS)
-    loader = NodeDataLoader(batch_graph, np.arange(batch_graph.num_nodes()), sampler, batch_size=BATCH_SIZE)
+    loader = NodeDataLoader(epoch_graph, np.arange(epoch_graph.num_nodes()), sampler, batch_size=BATCH_SIZE)
 
     for i, chunk in enumerate(loader):
         input_nodes, output_nodes, blocks = chunk
         blocks = [b.to(dev) for b in blocks]
-        batch_labels = blocks[-1].dstdata[f"{TARGET_SYMBOL}_labels"]
+        batch_labels = blocks[-1].dstdata[f"{TARGET_SYMBOL}_labels"].long()
         batch_train_idx = blocks[-1].dstdata["train"]
         batch_logits = model.forward_batch(blocks)
         batch_loss = cross_entropy(batch_logits[batch_train_idx], batch_labels[batch_train_idx], weight=loss_weights)
         batch_pred = batch_logits.argmax(1)
-        epoch_results[output_nodes, :] = batch_logits.detach().cpu()
+        epoch_results[output_nodes.long(), :] = batch_logits.detach().cpu()
 
         opt.zero_grad()
         batch_loss.backward()
         opt.step()
 
-    loss = cross_entropy(epoch_results, labels, weight=loss_weights.cpu())
+    loss = cross_entropy(epoch_results, labels.long(), weight=loss_weights.cpu())
     pred = epoch_results.argmax(1)
     train_acc = (pred[train_idx] == labels[train_idx]).float().mean()
     test_acc = (pred[test_idx] == labels[test_idx]).float().mean()

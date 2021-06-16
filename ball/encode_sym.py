@@ -1,5 +1,6 @@
 import json
 import pickle
+from pathlib import Path
 from glob import glob
 from concurrent.futures import TimeoutError
 from pebble import ProcessPool
@@ -11,11 +12,16 @@ import develop.filter_warnings
 TARGET_SYMBOL = "task_struct"
 POINTER_SIZE = 8
 
-# Warning: This will kick your CPU into absolute overdrive, it also segfaults on some machines, no clue why.
-DO_PARALLEL = False
-# Only used if DO_PARALLEL == True
-ENCODE_TIMEOUT = 120
 
+# Note that this will dictate memory consumption.
+# With RADIUS == 200 you should calculate 10 GiB/core + some to spare.
+# Some symbols (i.e. Ubuntu Kernel 5.x.x) also take 20 GiB/core \_(..)_/
+CORES = 2
+
+ENCODE_TIMEOUT = 240
+
+# Ensure output dir exists
+Path(SYM_DATA_PATH).mkdir(parents=True, exist_ok=True)
 
 compressor = WordCompressor()
 
@@ -45,36 +51,33 @@ def encode_sym_file(sym_path):
     graph, node_ids = ball_encoder.create_type_graph(sym_encoder)
 
     graph.ndata["blocks"] = compressor.compress_batch(graph.ndata["blocks"])
+    out_path = Path(SYM_DATA_PATH, Path(sym_path).name).with_suffix(".pkl")
+    with open(out_path, "wb+") as f:
+        pickle.dump((graph, node_ids), f)
+
     print(f"Done encoding: {sym_path}")
-    return sym_path, graph, node_ids
+    return sym_path
 
 
 all_paths = list(glob(SYMBOL_GLOB))
 
 
-if DO_PARALLEL:
-    pool = ProcessPool()
-    result = pool.map(encode_sym_file, all_paths, timeout=ENCODE_TIMEOUT).result()
-    all_data = []
-    while True:
-        try:
-            all_data.append(next(result))
-        except TimeoutError:
-            print("A symbols file timed out.")
-        except StopIteration:
-            break
-        except Exception as e:
-            print(f"Encoding failed: {e}")
-else:
-    all_data = [encode_sym_file(p) for p in all_paths]
+pool = ProcessPool(CORES)
+result = pool.map(encode_sym_file, all_paths, timeout=ENCODE_TIMEOUT).result()
+encoded = []
+while True:
+    try:
+        encoded.append(next(result))
+    except TimeoutError:
+        print("A symbols file timed out.")
+    except StopIteration:
+        break
+    except Exception as e:
+        print(f"Encoding failed: {e}")
 
-processed_paths = [p for p, _, _ in all_data]
-if set(all_paths) != set(processed_paths):
-    failed = set(all_paths).difference(processed_paths)
+
+if set(all_paths) != set(encoded):
+    failed = set(all_paths).difference(encoded)
     print(f"Failed to process {len(failed)} / {len(all_paths)} sym files: {failed}")
-
-print("Saving symbol data as pickle.")
-with open(SYM_DATA_PATH, "wb+") as f:
-    pickle.dump(all_data, f)
 
 print("Done")
