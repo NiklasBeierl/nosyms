@@ -24,7 +24,6 @@ print(f"Training start time: {dt.datetime.now()}")
 
 all_graphs = []
 all_syms = list(Path(SYM_DATA_PATH).glob("vmlinux*.pkl"))
-all_syms = all_syms[:1]
 print(f"Using: {all_syms}")
 for path in all_syms:
     with open(path, "rb") as f:
