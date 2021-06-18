@@ -17,6 +17,10 @@ from file_paths import SYM_DATA_PATH, MODEL_PATH
 from hyperparams import *
 import develop.filter_warnings
 
+print(f"RAD: {BALL_RADIUS}")
+print(f"BS: {BATCH_SIZE}")
+print(f"LR: {LEARNING_RATE}")
+
 TARGET_SYMBOL = "task_struct"
 BINARY_CLASSIFY = True
 
