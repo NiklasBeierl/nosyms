@@ -11,7 +11,7 @@ numpy = "^1.20.1"
 pandas = "^1.2.3"
 networkx = "^2.5.1"
 dgl = "^0.6.1"
-torch = "^1.8.1"
+torch = "1.8.1"
 matplotlib = { version = "^3.4.1", optional = true }
 Pebble = "^4.6.1"
 # Applied some modifications to volatility for the sake of speed
@@ -21,6 +21,8 @@ bidict = "^0.21.2"
 scikit-learn = "^0.24.2"
 humanize = "^3.7.1"
 interlap = "^0.2.7"
+seaborn = { version = "^0.11.1", optional = true }
+plot-metric = { version = "^0.0.6", optional = true }
 
 [tool.poetry.dev-dependencies]
 black = "^21.4b1"
@@ -30,7 +32,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry.extras]
 vol = ["volatility3"]
-plotting = ["matplotlib"]
+plotting = ["matplotlib", "seaborn", "plot-metric"]
 
 [tool.black]
 line-length = 120

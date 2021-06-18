@@ -31,8 +31,9 @@ to get started probably is using `pip3 install --user poetry` to install poetry 
 `poetry install` after `cd`ing into this projects folder. You can then use `poetry shell` to `activate` the `venv`
 poetry created and manages for this project. Wanna get out? Just run `deactivate` like in any old `venv`. :)
 
-You can have volatility3 and matplotlib added to the venv by respectively appending `-E vol` or `-E plotting` to 
-`poetry install`.
+### Optional dependencies
+Add volatility3 to the venv by appending `-E vol` to `poetry install`.
+Add packages needed for plotting by appending `-E plotting`. (Required for `ball/eval.py` 
 
 ## Using CUDA (recommended)
 If you want to run computations on a GPU, you need to install the cuda version of dgl. See how to choose ad install 
