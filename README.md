@@ -1,6 +1,7 @@
 # About
 The code in this repo is two things:  
-Experiments conducted for my bachelor thesis, I will add a link to the PDF once I finalized it.  
+Experiments conducted for my bachelor thesis, you can download it as pdf along with the data I used 
+[here](https://zenodo.org/record/4977244).
 
 And secondly it's a small library with tools that allow processing debugging symbols and memory snapshots with neural 
 networks. More specifically, it allows encoding `struct` definitions from 
@@ -20,7 +21,7 @@ above. Or you can of course just dive into the code itself:
   - Note: I mostly run this code "interactively". I would encourage you to do the same.
 - `./data_dump` / `./symbols` Where I keep my memory snapshot data and volatility3 symbols. 
   They are not checked into git, since they are huge files. You can get the files used in my experiments from 
-  [my dropbox](https://www.dropbox.com/sh/iouddhc3zzut0xy/AACcREb-8JiESOntFIv59XjHa?dl=0).
+  [zenodo](https://zenodo.org/record/4977244).
   
 # Setup
 > Note: You do **not** need to set up the dependencies of this project to use the volatility3 plugins! A working
