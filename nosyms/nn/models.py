@@ -4,9 +4,17 @@ from torch.nn import functional as F
 from dgl.nn.pytorch import GraphConv, HeteroGraphConv
 
 
-class MyConvolution(Module):
+class BallConvolution(Module):
     def __init__(self, etypes: List[str], conv_layers: int, in_size: int, hidden_size: int, out_size: int):
-        super(MyConvolution, self).__init__()
+        """
+        Convolutional neural network which works with ball encoding.
+        :param etypes: List of edge types to use in the convolutional layers
+        :param conv_layers: Number of convolutional layers
+        :param in_size: In size for classifier network
+        :param hidden_size: Hidden size for classifier network
+        :param out_size: Out size for classifier network
+        """
+        super(BallConvolution, self).__init__()
         self.training = True
         self.conv_layers = ModuleList(
             [

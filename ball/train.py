@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 import dgl
 from dgl.sampling import sample_neighbors
 from dgl.dataloading import MultiLayerFullNeighborSampler, NodeDataLoader
-from nosyms.nn.models import MyConvolution
+from nosyms.nn.models import BallConvolution
 from nosyms.nn.utils import add_self_loops
 from nosyms.encoding import BlockType
 from file_paths import SYM_DATA_PATH, MODEL_PATH
@@ -84,7 +84,7 @@ out_size = int(max(labels) + 1)
 hidden_size = int(np.median([in_size, out_size]))
 
 model_etypes = ["follows", "precedes", "pointed_to_by"]  # Ignoring the "is" relationship
-model = MyConvolution(model_etypes, BALL_CONV_LAYERS, in_size, hidden_size, out_size)
+model = BallConvolution(model_etypes, BALL_CONV_LAYERS, in_size, hidden_size, out_size)
 
 index = np.array(range(num_nodes))
 train_idx, test_idx = train_test_split(index, random_state=33, train_size=0.7, stratify=labels)
