@@ -11,6 +11,7 @@ If that sounds like something you want to dive into, the best place to get start
 above. Or you can of course just dive into the code itself:
 
 
+
 # File / package structure:
 - `nosyms.encoding`: Encode Memory Snapshots and Volatility Symbols into dgl graphs
 - `nosyms.encoding.ball`: Implementation of the encoding mechanism used in my experiments
@@ -94,3 +95,9 @@ Some cases I encountered :
 - A bunch of of structs related to acpi: `acpi_resource_uart_serialbus`, `acpi_resource_source`, 
   `acpi_resource_pin_function`
   - Not really sure about that so for, but it only happened with one of my symbol files.
+
+# License
+This software is licsensed under the GNU GENERAL PUBLIC LICENSE v3 -- see the 'COPYING' file in this
+directory for details
+
+See [COPYING](./copying) to see the full text.
