@@ -1,9 +1,9 @@
 import functools
 import struct
-from typing import Tuple, Mapping
+from mmap import mmap
+from typing import Tuple, Mapping, Union
 
-
-ReadableMem = Mapping[slice, bytes]
+ReadableMem = Union[Mapping[slice, bytes], mmap]
 
 
 class InvalidAddressException(Exception):
@@ -11,7 +11,7 @@ class InvalidAddressException(Exception):
 
 
 @functools.lru_cache(maxsize=None)
-def dir2base(layer: bytes, table_addr: int, index: int) -> Tuple[int, int]:
+def dir2base(layer: ReadableMem, table_addr: int, index: int) -> Tuple[int, int]:
     entry_addr = table_addr + 8 * index
     entry = struct.unpack("<Q", layer[entry_addr : entry_addr + 8])[0]
 
@@ -24,7 +24,7 @@ def dir2base(layer: bytes, table_addr: int, index: int) -> Tuple[int, int]:
 
 
 @functools.lru_cache(maxsize=None)
-def translate(layer: bytes, dtb: int, vaddr: int) -> int:
+def translate(layer: ReadableMem, dtb: int, vaddr: int) -> int:
     (l4, f4) = dir2base(layer, dtb, (vaddr >> 39) & 0x1FF)
     (l3, f3) = dir2base(layer, l4, (vaddr >> 30) & 0x1FF)
     if f3 & 0x80:
