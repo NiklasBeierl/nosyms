@@ -1,20 +1,21 @@
 from collections import defaultdict, Counter
 import mmap
-from typing import Dict, List, Iterable, DefaultDict, Tuple
+from typing import Dict, List, DefaultDict
 
 import pandas as pd
 import networkx as nx
 
 from dtb_detection import ReadableMem, translate, PagingStructure, PageTypes, PAGING_STRUCTURE_SIZE
+from dtb_detection.graphs import build_nx_graph, color_graph, add_task_info
 
 
 def read_paging_structures(mem: ReadableMem, pgds: List[int]) -> Dict[int, PagingStructure]:
     pages: Dict[int, PagingStructure] = {}
-
+    print("Reading known paging data.")
     last_progress = 0
     for i, pml4_addr in enumerate(pgds):
         if (progress := 100 * i // len(pgds)) != last_progress and (progress % 5 == 0):
-            print(f"{progress}% done")
+            print(f"{progress}%")
             last_progress = progress
 
         addresses = {pml4_addr}
@@ -52,46 +53,19 @@ def get_mapped_pages(pages: Dict[int, PagingStructure]) -> DefaultDict[int, bool
     return is_mapped
 
 
-def build_nx_graph(pages: Dict[int, PagingStructure], mem_size: int) -> nx.DiGraph:
-    graph = nx.DiGraph()
-    graph.add_nodes_from(pages.keys())
-    # graph.add_nodes_from(pages.keys())
-    for offset, page in pages.items():
-        for designation in page.designations:
-            for entry in page.entries.values():
-                if entry.target < mem_size and not entry.target_is_physical(designation):
-                    graph.add_edge(offset, entry.target)
-
-    for n in graph.nodes:
-        desigs = pages[n].designations
-        graph.nodes[n].update({str(t): (t in desigs) for t in PageTypes})
-
-    return graph
-
-
-def add_task_info(graph, info: Iterable[Tuple[str, int, int]]):
-    for k, u, comm in info:
-        graph.nodes[k]["comm"] = graph.nodes[u]["comm"] = comm
-        graph.nodes[k]["type"] = "kernel"
-        graph.nodes[u]["type"] = "user"
-        graph.add_edge(k, u)
-
-
-DESIGNATION_COLORS = {
-    frozenset({PageTypes.PML4}): "black",
-    frozenset({PageTypes.PDP}): "red",
-    frozenset({PageTypes.PD}): "green",
-    frozenset({PageTypes.PT}): "blue",
-    frozenset({PageTypes.PD, PageTypes.PT}): "cyan",
-    frozenset({PageTypes.PDP, PageTypes.PT}): "magenta",
-    frozenset({PageTypes.PDP, PageTypes.PD}): "yellow",
-    frozenset({PageTypes.PDP, PageTypes.PD, PageTypes.PT}): "white",
-}
-
-
-def color_graph(graph: nx.Graph, pages: Dict[int, PagingStructure]):
-    for n in graph.nodes:
-        graph.nodes[n]["color"] = DESIGNATION_COLORS[frozenset(pages[n].designations)]
+def get_node_features(graph: nx.DiGraph) -> pd.DataFrame:
+    """
+    Create a pandas dataframe with some useful stats for every node in a paging structures graph.
+    """
+    df = pd.DataFrame(data=[graph.nodes[node] for node in graph.nodes], index=graph.nodes)
+    r_graph = graph.reverse()
+    df["longest_inbound_path"] = [len(nx.dfs_successors(r_graph, source=node)) for node in r_graph.nodes]
+    idx, deg = tuple(zip(*graph.in_degree))
+    df["in_degree"] = pd.Series(data=deg, index=idx)
+    idx, deg = tuple(zip(*graph.out_degree))
+    # Note: Out degree will be 0 for pages in "training" data and 1 in "target" data
+    df["out_degree"] = pd.Series(data=deg, index=idx)
+    return df
 
 
 if __name__ == "__main__":
@@ -136,8 +110,11 @@ if __name__ == "__main__":
     out_of_bound_pages = sum(len(set(target for _, target in entries)) for entries in out_of_bounds.values())
 
     graph = build_nx_graph(pages, len(mem))
-    add_task_info(graph, task_info[["phy_kernel_pml4", "phy_user_pml4", "COMM"]].itertuples(index=False))
-    color_graph(graph, pages)
+    graph = add_task_info(graph, task_info[["phy_kernel_pml4", "phy_user_pml4", "COMM"]].itertuples(index=False))
+
+    node_data = get_node_features(graph)
+
+    graph = color_graph(graph, pages)
     nx.readwrite.write_graphml(graph, "./page-structures.graphml")
 
     print("Done.")
