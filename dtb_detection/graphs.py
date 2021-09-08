@@ -20,9 +20,8 @@ def build_nx_graph(pages: Dict[int, PagingStructure], mem_size: int) -> nx.DiGra
                 if entry.target < mem_size and not entry.target_is_physical(designation):
                     graph.add_edge(offset, entry.target)
 
-    for n in graph.nodes:
-        desigs = pages[n].designations
-        graph.nodes[n].update({str(t): (t in desigs) for t in PageTypes})
+    for offset, page in pages.items():
+        graph.nodes[offset].update({t: (t in page.designations) for t in PageTypes})
 
     return graph
 
