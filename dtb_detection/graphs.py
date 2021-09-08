@@ -5,7 +5,7 @@ import networkx as nx
 from dtb_detection import PageTypes, PagingStructure
 
 
-def build_nx_graph(pages: Dict[int, PagingStructure], mem_size: int) -> nx.DiGraph:
+def build_nx_graph(pages: Dict[int, PagingStructure], mem_size: int, include_phyiscal: bool = False) -> nx.DiGraph:
     """
     Build a networkx graph representing the paging structures in a snapshot.
     :param pages: Dict mapping physical address to paging structure.
@@ -17,7 +17,7 @@ def build_nx_graph(pages: Dict[int, PagingStructure], mem_size: int) -> nx.DiGra
     for offset, page in pages.items():
         for designation in page.designations:
             for entry in page.entries.values():
-                if entry.target < mem_size and not entry.target_is_physical(designation):
+                if entry.target < mem_size and (include_phyiscal or not entry.target_is_physical(designation)):
                     graph.add_edge(offset, entry.target)
 
     for offset, page in pages.items():
