@@ -3,7 +3,7 @@ import json
 import networkx as nx
 import pandas as pd
 
-from dtb_detection import Snapshot, PageTypes
+from paging_detection import Snapshot, PageTypes
 
 
 def get_node_features(graph: nx.DiGraph) -> pd.DataFrame:

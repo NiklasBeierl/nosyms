@@ -2,7 +2,7 @@ from typing import Dict, Iterable, Tuple
 
 import networkx as nx
 
-from dtb_detection import PageTypes, PagingStructure
+from paging_detection import PageTypes, PagingStructure
 
 
 def build_nx_graph(pages: Dict[int, PagingStructure], mem_size: int, include_phyiscal: bool = False) -> nx.DiGraph:

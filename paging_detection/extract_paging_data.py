@@ -3,8 +3,8 @@ from typing import Dict
 
 import networkx as nx
 
-from dtb_detection import PagingStructure, ReadableMem, PAGING_STRUCTURE_SIZE, PageTypes, Snapshot
-from dtb_detection.graphs import build_nx_graph
+from paging_detection import PagingStructure, ReadableMem, PAGING_STRUCTURE_SIZE, PageTypes, Snapshot
+from paging_detection.graphs import build_nx_graph
 
 
 # TODO: Parallelize?

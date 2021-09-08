@@ -5,8 +5,8 @@ from typing import Dict, List, DefaultDict
 import pandas as pd
 import networkx as nx
 
-from dtb_detection import ReadableMem, translate, PagingStructure, PageTypes, PAGING_STRUCTURE_SIZE
-from dtb_detection.graphs import build_nx_graph, color_graph, add_task_info
+from paging_detection import ReadableMem, translate, PagingStructure, PageTypes, PAGING_STRUCTURE_SIZE
+from paging_detection.graphs import build_nx_graph, color_graph, add_task_info
 
 
 def read_paging_structures(mem: ReadableMem, pgds: List[int]) -> Dict[int, PagingStructure]:

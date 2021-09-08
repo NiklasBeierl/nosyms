@@ -132,3 +132,9 @@ class PagingStructure(BaseModel):
             if value & 1:  # Only add present entries
                 entries[offset] = PagingEntry(value=value)
         return cls(entries=entries, designations=set(designations))
+
+
+class Snapshot(BaseModel):
+    path: str
+    pages: Dict[int, PagingStructure]
+    size: int
