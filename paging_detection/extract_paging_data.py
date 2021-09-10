@@ -56,11 +56,11 @@ if __name__ == "__main__":
         pages[offset].designations = {t for t in PageTypes if node[t]}
 
     print("Saving graph.")
-    nx.readwrite.write_graphml(full_graph, "./all_pages.graphml")
+    nx.readwrite.write_graphml(full_graph, "../data_dump/all_pages.graphml")
 
     print("Saving pages.")
     snapshot_data = Snapshot(path=DUMP_NAME, pages=pages, size=len(mem))
-    with open("./all_pages.json", "w") as f:
+    with open("../data_dump/all_pages.json", "w") as f:
         f.write(snapshot_data.json())
 
     print("Done")

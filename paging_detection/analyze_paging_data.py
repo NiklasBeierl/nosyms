@@ -20,12 +20,12 @@ def get_node_features(graph: nx.DiGraph) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    with open("./all_pages.json") as f:
+    with open("../data_dump/all_pages.json") as f:
         snapshot = Snapshot.validate(json.load(f))
 
     pages = snapshot.pages
 
-    graph = nx.read_graphml("./all_pages.graphml")
+    graph = nx.read_graphml("../data_dump/all_pages.graphml")
     data_pages = [node for node, data in graph.nodes.items() if not data[str(PageTypes.PT)]]
     graph.remove_nodes_from(data_pages)
 

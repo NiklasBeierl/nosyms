@@ -70,7 +70,7 @@ def get_node_features(graph: nx.DiGraph) -> pd.DataFrame:
 
 if __name__ == "__main__":
     kernel_dtb = 39886848
-    task_info = pd.read_csv("./nokaslr_pgds.csv")
+    task_info = pd.read_csv("../data_dump/nokaslr_pgds.csv")
     with open("../data_dump/nokaslr.raw", "rb") as f:
         mem = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
@@ -115,6 +115,6 @@ if __name__ == "__main__":
     node_data = get_node_features(graph)
 
     graph = color_graph(graph, pages)
-    nx.readwrite.write_graphml(graph, "./page-structures.graphml")
+    nx.readwrite.write_graphml(graph, "../data_dump/page-structures.graphml")
 
     print("Done.")
