@@ -92,6 +92,16 @@ class PagingEntry(BaseModel):
 
     # There is no valid_pt, because page tables have no invariants.
 
+    def is_valid(self, page_type: PageTypes):
+        if page_type == PageTypes.PML4:
+            return self.valid_pml4e
+        if page_type == PageTypes.PDP:
+            return self.valid_pdpe
+        if page_type == PageTypes.PD:
+            return self.valid_pde
+        if page_type == PageTypes.PT:
+            return True
+
     def target_is_physical(self, assumed_type: PageTypes):
         if assumed_type == PageTypes.PML4:
             return False
