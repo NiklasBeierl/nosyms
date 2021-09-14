@@ -64,29 +64,29 @@ class PagingEntry(BaseModel):
     value: int
 
     @property
-    def present(self):
-        return self.value & 1
+    def present(self) -> bool:
+        return bool(self.value & 1)
 
     @property
-    def target(self):
+    def target(self) -> int:
         return self.value & 0x001FFFFFFFFFF000
 
     @property
-    def nx(self):
+    def nx(self) -> bool:
         return bool(self.value & 1 << 63)
 
     @property
-    def valid_pml4e(self):
+    def valid_pml4e(self) -> bool:
         # If bit 0 is set, bits 8 and 7 mbz
         return not ((self.value & 1) and (self.value & (3 << 7)))
 
     @property
-    def valid_pdpe(self):
+    def valid_pdpe(self) -> bool:
         # If bit 0 is set (present), bit 7 mbz or bits 13 through 29 mbz (1GiB aligned page addr)
         return not ((self.value & 1) and (self.value & (1 << 7)) and (self.value & 0x1FFFF << 12))
 
     @property
-    def valid_pde(self):
+    def valid_pde(self) -> bool:
         # If bit 0 is set (present), bit 7 mbz or bits 13 through 20 mbz (2MiB aligned page addr)
         return not ((self.value & 1) and (self.value & (1 << 7)) and (self.value & 0xFF << 12))
 
@@ -118,19 +118,19 @@ class PagingStructure(BaseModel):
     designations: Set[PageTypes] = Field(default_factory=set)
 
     @property
-    def valid_pml4es(self):
+    def valid_pml4es(self) -> Dict[int, PagingEntry]:
         return {offset: entry for offset, entry in self.entries.items() if entry.valid_pml4e}
 
     @property
-    def valid_pdpes(self):
+    def valid_pdpes(self) -> Dict[int, PagingEntry]:
         return {offset: entry for offset, entry in self.entries.items() if entry.valid_pdpe}
 
     @property
-    def valid_pdes(self):
+    def valid_pdes(self) -> Dict[int, PagingEntry]:
         return {offset: entry for offset, entry in self.entries.items() if entry.valid_pde}
 
     @property
-    def valid_ptes(self):
+    def valid_ptes(self) -> Dict[int, PagingEntry]:
         return self.entries
 
     def out_of_bounds_entries(self, mem_size: int) -> Dict[int, PagingEntry]:
