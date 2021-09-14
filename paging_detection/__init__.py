@@ -15,7 +15,10 @@ class InvalidAddressException(Exception):
 
 @functools.lru_cache(maxsize=None)
 def dir2base(layer: ReadableMem, table_addr: int, index: int) -> Tuple[int, int]:
-    entry_addr = table_addr + 8 * index
+    entry_addr = table_addr + (8 * index)
+    if entry_addr + 8 > len(layer):
+        raise InvalidAddressException
+
     entry = struct.unpack("<Q", layer[entry_addr : entry_addr + 8])[0]
 
     if entry & 1 == 0:  # not present
