@@ -92,6 +92,10 @@ class PagingEntry(BaseModel):
 
     # There is no valid_pt, because page tables have no invariants.
 
+    @property
+    def user_access(self) -> bool:
+        return bool(self.value & (1 << 1))
+
     def is_valid(self, page_type: PageTypes):
         if page_type == PageTypes.PML4:
             return self.valid_pml4e
