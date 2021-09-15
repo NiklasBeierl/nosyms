@@ -1,12 +1,12 @@
 from collections import defaultdict, Counter
 import mmap
-from typing import Dict, List, DefaultDict
+from typing import Dict, List, DefaultDict, Tuple
 
 import pandas as pd
 import networkx as nx
 
-from paging_detection import ReadableMem, translate, PagingStructure, PageTypes, PAGING_STRUCTURE_SIZE
-from paging_detection.graphs import build_nx_graph, color_graph, add_task_info
+from paging_detection import ReadableMem, translate, PagingStructure, PageTypes, PAGING_STRUCTURE_SIZE, Snapshot
+from paging_detection.graphs import color_graph, add_task_info
 
 
 def read_paging_structures(mem: ReadableMem, pgds: List[int]) -> Dict[int, PagingStructure]:
@@ -62,7 +62,45 @@ def get_mapped_pages(pages: Dict[int, PagingStructure]) -> DefaultDict[int, bool
     return is_mapped
 
 
-def get_node_features(graph: nx.DiGraph) -> pd.DataFrame:
+def build_nx_graph(
+    pages: Dict[int, PagingStructure], mem_size: int, phy_nodes: bool = False
+) -> Tuple[nx.MultiDiGraph, List[Tuple]]:
+    """
+    Build a networkx graph representing the paging structures in a snapshot.
+    :param pages: Dict mapping physical address to paging structure.
+    :param mem_size: Size of the memory snapshot, pages "outside" the physical memory will be ignored.
+    :param phy_nodes: Whether to add nodes for physical pages, if False, last-level structures have an additional
+    :return: The built graph and a list of out of bounds entries.
+    """
+    graph = nx.MultiDiGraph()
+    out_of_bound_entries = []
+    for page_offset, page in pages.items():
+        for designation in page.designations:
+            for entry_offset, entry in page.entries.items():
+                if entry.target == 0:
+                    continue
+                if entry.target < mem_size:
+                    if phy_nodes or not entry.target_is_physical(designation):
+                        graph.add_edge(page_offset, entry.target, entry_offset)
+                    else:
+                        node = graph.nodes[page_offset]
+                        node["mapped_pages"] = node.get("mapped_pages", 0) + 1
+                # If the target is NOT another structure, it may map outside the snapshot (IOMem) but is not included
+                # in the graph. Otherwise its an out of bounds entry.
+                elif not entry.target_is_physical(designation):
+                    out_of_bound_entries.append(
+                        (str(designation), hex(page_offset), hex(entry_offset), hex(entry.target), hex(entry.value))
+                    )
+
+    # Empty PML4s are not added during the loop above because they have neither in- nor outbound edges.
+    graph.add_nodes_from(pages.keys())
+    for offset, page in pages.items():
+        graph.nodes[offset].update({t: (t in page.designations) for t in PageTypes})
+
+    return graph, out_of_bound_entries
+
+
+def get_node_features(graph: nx.MultiDiGraph) -> pd.DataFrame:
     """
     Create a pandas dataframe with some useful stats for every node in a paging structures graph.
     """
@@ -104,6 +142,40 @@ if __name__ == "__main__":
 
     pages = read_paging_structures(mem, phy_pgds)
 
+    print("Saving pages.")
+    snapshot = Snapshot(path=DUMP_PATH, pages=pages, size=len(mem))
+    with open("../data_dump/known-pages.json", "w") as f:
+        f.write(snapshot.json())
+
+    print("Building nx graph.")
+    graph, out_of_bounds = build_nx_graph(pages, len(mem))
+
+    if out_of_bounds:
+        print("There are out of bounds entries. Saving to csv.")
+        oob_df = pd.DataFrame(
+            out_of_bounds,
+            columns=[
+                "page type",
+                "page physical offset",
+                "entry offset within page",
+                "entry target page",
+                "entry value",
+            ],
+        )
+        oob_df.to_csv("../data_dump/out_of_bounds_entries.csv", index=False)
+
+    print("Adding task info to PML4s in graph.")
+    graph = add_task_info(graph, task_info[["phy_kernel_pml4", "phy_user_pml4", "COMM"]].itertuples(index=False))
+
+    print("Adding colors to graph.")
+    graph = color_graph(graph, pages)
+
+    print("Saving graph.")
+    nx.readwrite.write_graphml(graph, "../data_dump/known-pages.graphml")
+
+    # Below is just some exploratory code, you will need a debugger / add prints to access these values.
+
+    node_data = get_node_features(graph)
     is_mapped = get_mapped_pages(pages)
     total_mapped = sum(mapped and addr < len(mem) for addr, mapped in is_mapped.items())
     # Approximate b.c. of large pages
@@ -120,12 +192,4 @@ if __name__ == "__main__":
     out_of_bounds_entries = sum(len(entries) for entries in out_of_bounds.values())
     out_of_bound_pages = sum(len(set(target for _, target in entries)) for entries in out_of_bounds.values())
 
-    graph = build_nx_graph(pages, len(mem))
-    graph = add_task_info(graph, task_info[["phy_kernel_pml4", "phy_user_pml4", "COMM"]].itertuples(index=False))
-
-    node_data = get_node_features(graph)
-
-    graph = color_graph(graph, pages)
-    nx.readwrite.write_graphml(graph, "../data_dump/page-structures.graphml")
-
-    print("Done.")
+print("Done.")
