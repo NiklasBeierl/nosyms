@@ -2,7 +2,7 @@ import struct
 import csv
 import re
 import functools
-from typing import List, Generator
+from typing import List, Generator, Tuple
 from volatility3.framework import renderers, interfaces, layers
 from volatility3.framework.configuration import requirements
 from volatility3.framework.interfaces import plugins
@@ -80,14 +80,17 @@ class KernelMemPointerScan(plugins.PluginInterface):
         return layer
 
     @functools.lru_cache(maxsize=None)
-    def dir2base(self, layer, dir, index):
-        entry = struct.unpack("<Q", layer.read(dir + 8 * index, 8))[0]
+    def dir2base(self, layer: Intel32e, table_addr: int, index: int) -> Tuple[int, int]:
+        entry = struct.unpack("<Q", layer.read(table_addr + 8 * index, 8))[0]
         if entry & 1 == 0:  # not present
-            raise InvalidAddressException("dir2base", dir, "Page not present")
-        return (entry & 0x001FFFFFFFFFF000, entry & 0xFFF)
+            raise InvalidAddressException("dir2base", table_addr, "Page not present")
+
+        next_page = entry & 0x001FFFFFFFFFF000
+        fields = entry & 0xFFF
+        return next_page, fields
 
     @functools.lru_cache(maxsize=None)
-    def translate(self, layer, dtb, vaddr):
+    def translate(self, layer: Intel32e, dtb: int, vaddr: int) -> int:
         (l4, f4) = self.dir2base(layer, dtb, (vaddr >> 39) & 0x1FF)
         (l3, f3) = self.dir2base(layer, l4, (vaddr >> 30) & 0x1FF)
         if f3 & 0x80:
