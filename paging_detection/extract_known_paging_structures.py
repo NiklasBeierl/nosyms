@@ -13,8 +13,8 @@ def read_paging_structures(mem: ReadableMem, pgds: List[int]) -> Dict[int, Pagin
     """
     Extract PagingStructure from memory. Consider every int in pgds to be an address of a PML4.
     :param mem: Memory
-    :param pgds: List of physical pml4 addresses in mem.
-    :return: Dict mapping page address to instance of PagingStructure describing the underlying page.
+    :param pgds: List of physical pml4 addresses in mem
+    :return: Dict mapping page address to instance of PagingStructure describing the underlying page
     """
     pages: Dict[int, PagingStructure] = {}
     print("Extracting known paging structures.")
