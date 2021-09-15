@@ -10,8 +10,14 @@ from paging_detection.graphs import build_nx_graph, color_graph, add_task_info
 
 
 def read_paging_structures(mem: ReadableMem, pgds: List[int]) -> Dict[int, PagingStructure]:
+    """
+    Extract PagingStructure from memory. Consider every int in pgds to be an address of a PML4.
+    :param mem: Memory
+    :param pgds: List of physical pml4 addresses in mem.
+    :return: Dict mapping page address to instance of PagingStructure describing the underlying page.
+    """
     pages: Dict[int, PagingStructure] = {}
-    print("Reading known paging data.")
+    print("Extracting known paging structures.")
     last_progress = 0
     for i, pml4_addr in enumerate(pgds):
         if (progress := 100 * i // len(pgds)) != last_progress and (progress % 5 == 0):
@@ -44,6 +50,9 @@ def read_paging_structures(mem: ReadableMem, pgds: List[int]) -> Dict[int, Pagin
 
 
 def get_mapped_pages(pages: Dict[int, PagingStructure]) -> DefaultDict[int, bool]:
+    """
+    Determine which of the pages are mapped into any virtual address space.
+    """
     is_mapped = defaultdict(lambda: False)
     for page in pages.values():
         for entry in page.entries.values():
@@ -68,10 +77,12 @@ def get_node_features(graph: nx.DiGraph) -> pd.DataFrame:
     return df
 
 
+DUMP_PATH = "../data_dump/nokaslr.raw"
+
 if __name__ == "__main__":
     kernel_dtb = 39886848
     task_info = pd.read_csv("../data_dump/nokaslr_pgds.csv")
-    with open("../data_dump/nokaslr.raw", "rb") as f:
+    with open(DUMP_PATH, "rb") as f:
         mem = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
     # https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/pgtable.h#L1196
