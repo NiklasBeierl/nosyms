@@ -23,6 +23,7 @@ humanize = "^3.7.1"
 interlap = "^0.2.7"
 seaborn = { version = "^0.11.1", optional = true }
 plot-metric = { version = "^0.0.6", optional = true }
+pydantic = "^1.8.2"
 
 [tool.poetry.dev-dependencies]
 black = "^21.4b1"
