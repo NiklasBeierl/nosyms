@@ -28,7 +28,7 @@ class CachedMapsToData:
             return True
 
         for entry in page.entries.values():
-            if entry.target_is_physical(page_type):
+            if entry.target_is_data(page_type):
                 return True
             else:
                 return self(entry.target, _PAGE_TYPES_ORDERED[_PAGE_TYPES_ORDERED.index(page_type) + 1])
@@ -40,8 +40,9 @@ def calculate_errors(pages_truth, pages_predicted):
     true_positives = defaultdict(lambda: 0)
     false_positives = defaultdict(lambda: 0)
     true_negatives = defaultdict(lambda: 0)
+    # Pages not mapping to any data are not counted here
     false_negatives = defaultdict(lambda: 0)
-    # Considering false negatives which did not map to any data
+    # Considering false negatives where the real page does not map to any data
     false_negatives_with_empty = defaultdict(lambda: 0)
 
     for offset, pred in pages_predicted.items():

@@ -106,7 +106,10 @@ class PagingEntry(BaseModel):
         if page_type == PageTypes.PT:
             return True
 
-    def target_is_physical(self, assumed_type: PageTypes):
+    def target_is_data(self, assumed_type: PageTypes):
+        """
+        Determine whether the target page is considered a "data page" under the assumed type.
+        """
         if assumed_type == PageTypes.PML4:
             return False
         elif assumed_type == PageTypes.PDP:

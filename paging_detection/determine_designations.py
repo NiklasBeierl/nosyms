@@ -32,10 +32,10 @@ def get_max_path(graph: nx.MultiDiGraph, node, max_len: int, direction: Union[Li
 
 def determine_possible_designations(graph: nx.MultiDiGraph, pages: Dict[int, PagingStructure]) -> nx.MultiDiGraph:
     """
-    From the topology of a "page graph", infer the possible designation for every page (node).
+    From the topology of a "page graph", infer the possible page_types for every page (node).
     Assumptions:
         - Only PML4s can have no inbound edges. (Higher level structures must exist in any hierarchy)
-        - At least one valid entry under any assigned designation
+        - At least one valid entry under any assigned page_type
         - At least one entry all the way to a data page
     :param graph: Graph representing the pages.
     :param pages: Dict mapping physical addresses to a paging structure.
@@ -51,24 +51,24 @@ def determine_possible_designations(graph: nx.MultiDiGraph, pages: Dict[int, Pag
 
         max_outbound = get_max_path(graph, node, max_len=len(PageTypes) - 1, direction="out")
 
-        if max_outbound == 0:  # Can only be physical page
+        if max_outbound == 0:  # Can only be a data page
             designations_avoided += len(possible_designations)
             possible_designations = set()
         elif max_outbound == 1:
-            possible_designations.discard(PageTypes.PML4)  # PML4s never directly point to physical pages
+            possible_designations.discard(PageTypes.PML4)  # PML4s never directly point to data pages
             # PDP and PD can point to large pages, but there needs to be at least one qualifying entry
             for page_type in possible_designations & {PageTypes.PDP, PageTypes.PD}:
-                if not any(entry.target_is_physical(page_type) for entry in page.entries.values()):
+                if not any(entry.target_is_data(page_type) for entry in page.entries.values()):
                     possible_designations.discard(page_type)
                     designations_avoided += 1
         elif max_outbound == 2 and PageTypes.PDP in possible_designations:
             children_entries = [entry for suc in graph.successors(node) for entry in pages[int(suc)].entries.values()]
-            # If none of the successors qualifies as a PD pointing to a physical page, the current page can't be a PDP
-            if not any(entry.target_is_physical(PageTypes.PD) for entry in children_entries):
+            # If none of the successors qualifies as a PD pointing to a data page, the current page can't be a PDP
+            if not any(entry.target_is_data(PageTypes.PD) for entry in children_entries):
                 possible_designations.discard(PageTypes.PDP)
                 designations_avoided += 1
 
-        # At least one valid entry under any assigned designation
+        # At least one valid entry under any assigned page_type
         for page_type in possible_designations & set(PAGE_TYPES_ORDERED[:-1]):  # PT entries are always valid
             if not any(entry.is_valid(page_type) for entry in page.entries.values()):
                 possible_designations.remove(page_type)

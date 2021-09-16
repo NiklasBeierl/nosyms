@@ -32,7 +32,7 @@ def read_paging_structures(mem: ReadableMem, pgds: List[int]) -> Dict[int, Pagin
                     table = pages[addr]
                     if page_type in table.designations:
                         continue  # Already considered this table as page_type, nothing left to do
-                    # Not continue-ing here since we now need to consider all entries given the new type designation
+                    # Not continue-ing here since we now need to consider all entries given the new page_type
                     table.designations.add(page_type)
                 else:
                     page_mem = mem[addr : addr + PAGING_STRUCTURE_SIZE]
@@ -42,7 +42,7 @@ def read_paging_structures(mem: ReadableMem, pgds: List[int]) -> Dict[int, Pagin
                     entry.target
                     for entry in table.entries.values()
                     # PDEs and PDPEs can point to large pages, we do not want to confuse those for paging structures
-                    if not entry.target_is_physical(page_type) and entry.target < len(mem)
+                    if not entry.target_is_data(page_type) and entry.target < len(mem)
                 }
             addresses = next_addresses
 
@@ -57,45 +57,47 @@ def get_mapped_pages(pages: Dict[int, PagingStructure]) -> DefaultDict[int, bool
     for page in pages.values():
         for entry in page.entries.values():
             for designation in page.designations:
-                if entry.target_is_physical(designation):
+                if entry.target_is_data(designation):
                     is_mapped[entry.target] = True
     return is_mapped
 
 
 def build_nx_graph(
-    pages: Dict[int, PagingStructure], mem_size: int, phy_nodes: bool = False
+    pages: Dict[int, PagingStructure], mem_size: int, data_page_nodes: bool = False
 ) -> Tuple[nx.MultiDiGraph, List[Tuple]]:
     """
     Build a networkx graph representing the paging structures in a snapshot.
     :param pages: Dict mapping physical address to paging structure.
     :param mem_size: Size of the memory snapshot, pages "outside" the physical memory will be ignored.
-    :param phy_nodes: Whether to add nodes for physical pages, if False, last-level structures have an additional
+    :param data_page_nodes: Whether to add nodes for data pages, if False, last-level structures have an additional
+    property "data_pages", indicating how many data pages they point to
     :return: The built graph and a list of out of bounds entries.
     """
     graph = nx.MultiDiGraph()
     out_of_bound_entries = []
+
+    # Empty PML4s are not added during the loop below because they have neither in- nor outbound edges.
+    graph.add_nodes_from(pages.keys())
+    for offset, page in pages.items():
+        graph.nodes[offset].update({t: (t in page.designations) for t in PageTypes})
+
     for page_offset, page in pages.items():
         for designation in page.designations:
             for entry_offset, entry in page.entries.items():
                 if entry.target == 0:
                     continue
                 if entry.target < mem_size:
-                    if phy_nodes or not entry.target_is_physical(designation):
+                    if data_page_nodes or not entry.target_is_data(designation):
                         graph.add_edge(page_offset, entry.target, entry_offset)
                     else:
                         node = graph.nodes[page_offset]
-                        node["mapped_pages"] = node.get("mapped_pages", 0) + 1
-                # If the target is NOT another structure, it may map outside the snapshot (IOMem) but is not included
-                # in the graph. Otherwise its an out of bounds entry.
-                elif not entry.target_is_physical(designation):
+                        node["data_pages"] = node.get("data_pages", 0) + 1
+                # If the target is a data page, it may lie outside the snapshot (IOMem). Otherwise its an out-of-bounds
+                # entry. In any case, it is not added as a node.
+                elif not entry.target_is_data(designation):
                     out_of_bound_entries.append(
                         (str(designation), hex(page_offset), hex(entry_offset), hex(entry.target), hex(entry.value))
                     )
-
-    # Empty PML4s are not added during the loop above because they have neither in- nor outbound edges.
-    graph.add_nodes_from(pages.keys())
-    for offset, page in pages.items():
-        graph.nodes[offset].update({t: (t in page.designations) for t in PageTypes})
 
     return graph, out_of_bound_entries
 
@@ -173,7 +175,7 @@ if __name__ == "__main__":
     print("Saving graph.")
     nx.readwrite.write_graphml(graph, "../data_dump/known-pages.graphml")
 
-    # Below is just some exploratory code, you will need a debugger / add prints to access these values.
+    # Below is some exploratory code, you will need a debugger / add prints to access these values.
 
     node_data = get_node_features(graph)
     is_mapped = get_mapped_pages(pages)
