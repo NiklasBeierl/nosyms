@@ -125,7 +125,7 @@ if __name__ == "__main__":
     with open(DUMP_PATH, "rb") as f:
         mem = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
-    # https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/pgtable.h#L1196
+    # https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/pgtable.h#L1168
     # All top-level PAGE_TABLE_ISOLATION page tables are order-1 pages (8k-aligned and 8k in size).
     # The kernel one is at the beginning 4k and the user one is in the last 4k.
     # To switch between them, you just need to flip the 12th bit in their addresses.
