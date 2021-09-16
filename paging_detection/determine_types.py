@@ -83,26 +83,44 @@ def determine_possible_types(graph: nx.MultiDiGraph, pages: Dict[int, PagingStru
 
 
 if __name__ == "__main__":
-    graph = nx.read_graphml("../data_dump/all_pages.graphml", force_multigraph=True)
-    print("Loaded graph.")
+    import argparse
+    import pathlib
 
-    with open("../data_dump/all_pages.json") as f:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "in_files",
+        help="Path to graphml file or the json with all pages in the snapshot. Other will be inferred.",
+        type=pathlib.Path,
+    )
+    args = parser.parse_args()
+    input_path = args.in_files
+    if input_path.suffix not in {".json", ".graphml", ""}:
+        raise ValueError("Invalid extension for input files path. Must be either .json, .graphml or no extension.")
+    in_pages_path = input_path.with_suffix(".json")
+    in_graph_path = input_path.with_suffix(".graphml")
+    out_pages_path = input_path.with_stem(input_path.stem + "_with_types").with_suffix(".json")
+    out_graph_path = out_pages_path.with_suffix(".graphml")
+
+    print(f"Loading graph: {in_graph_path}")
+    graph = nx.read_graphml(in_graph_path, force_multigraph=True)
+
+    print(f"Loading pages: {in_pages_path}")
+    with open(in_pages_path) as f:
         snapshot = Snapshot.validate(json.load(f))
     pages = snapshot.pages
-    print("Loaded pages.")
 
     print("Determining possible types for all pages.")
     graph_with_types = determine_possible_types(graph, pages)
 
-    print("Saving graph.")
-    nx.readwrite.write_graphml(graph_with_types, "../data_dump/all_pages_with_designations.graphml")
+    print(f"Saving graph: {out_graph_path}")
+    nx.readwrite.write_graphml(graph_with_types, out_graph_path)
 
     print("Transferring designations to snapshot data")
     for offset, node in graph_with_types.nodes.items():
         pages[int(offset)].designations = {t for t in PageTypes if node[t]}
 
-    print("Saving pages.")
-    with open("../data_dump/all_pages_with_designations.json", "w") as f:
+    print(f"Saving pages: {out_pages_path}")
+    with open(out_pages_path, "w") as f:
         f.write(snapshot.json())
 
 print("Done")

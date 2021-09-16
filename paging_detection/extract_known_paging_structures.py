@@ -117,12 +117,37 @@ def get_node_features(graph: nx.MultiDiGraph) -> pd.DataFrame:
     return df
 
 
-DUMP_PATH = "../data_dump/nokaslr.raw"
+dump_path = "../data_dump/nokaslr.raw"
 
 if __name__ == "__main__":
-    kernel_dtb = 39886848
-    task_info = pd.read_csv("../data_dump/nokaslr_pgds.csv")
-    with open(DUMP_PATH, "rb") as f:
+    import argparse
+    import pathlib
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "dump_path",
+        help="Path to snapshot. Output files will have the same name with _known_pages.[json|graphml] appended.",
+        type=pathlib.Path,
+    )
+    parser.add_argument(
+        "task_info",
+        help="Path to .csv containing task info. Use the pslist_with_pgds.PsListWithPGDs Vol3 plugin.",
+        type=pathlib.Path,
+    )
+    parser.add_argument("kernel_pgd", help="Location of a pgd mapping all process pgds.", type=int)
+
+    args = parser.parse_args()
+    dump_path = args.dump_path
+    kernel_pgd = args.kernel_pgd
+    task_info_path = args.task_info
+
+    out_pages = dump_path.with_stem(dump_path.stem + "_known_pages").with_suffix(".json")
+    out_graph = out_pages.with_suffix(".graphml")
+    out_oob_entries = dump_path.with_stem(dump_path.stem + "_out_of_bounds").with_suffix(".csv")
+
+    task_info = pd.read_csv(task_info_path)
+
+    with open(dump_path, "rb") as f:
         mem = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
     # https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/pgtable.h#L1168
@@ -130,10 +155,10 @@ if __name__ == "__main__":
     # The kernel one is at the beginning 4k and the user one is in the last 4k.
     # To switch between them, you just need to flip the 12th bit in their addresses.
     task_info["phy_kernel_pml4"] = [  # Bit 12 cleared (kernel space)
-        translate(mem, kernel_dtb, (pgd & ~(1 << 12))) if pgd != -1 else -1 for pgd in task_info["active_mm->pgd"]
+        translate(mem, kernel_pgd, (pgd & ~(1 << 12))) if pgd != -1 else -1 for pgd in task_info["active_mm->pgd"]
     ]
     task_info["phy_user_pml4"] = [  # Bit 12 set (user space)
-        translate(mem, kernel_dtb, (pgd | (1 << 12))) if pgd != -1 else -1 for pgd in task_info["active_mm->pgd"]
+        translate(mem, kernel_pgd, (pgd | (1 << 12))) if pgd != -1 else -1 for pgd in task_info["active_mm->pgd"]
     ]
     task_info = task_info[task_info["phy_user_pml4"] != -1]
 
@@ -144,16 +169,16 @@ if __name__ == "__main__":
 
     pages = read_paging_structures(mem, phy_pgds)
 
-    print("Saving pages.")
-    snapshot = Snapshot(path=DUMP_PATH, pages=pages, size=len(mem))
-    with open("../data_dump/known-pages.json", "w") as f:
+    print(f"Saving pages: {out_pages}")
+    snapshot = Snapshot(path=str(dump_path.resolve), pages=pages, size=len(mem))
+    with open(out_pages, "w") as f:
         f.write(snapshot.json())
 
     print("Building nx graph.")
     graph, out_of_bounds = build_nx_graph(pages, len(mem))
 
     if out_of_bounds:
-        print("There are out of bounds entries. Saving to csv.")
+        print(f"There are out of bounds entries. Saving to csv: {out_oob_entries}")
         oob_df = pd.DataFrame(
             out_of_bounds,
             columns=[
@@ -164,7 +189,7 @@ if __name__ == "__main__":
                 "entry value",
             ],
         )
-        oob_df.to_csv("../data_dump/out_of_bounds_entries.csv", index=False)
+        oob_df.to_csv(out_oob_entries, index=False)
 
     print("Adding task info to PML4s in graph.")
     graph = add_task_info(graph, task_info[["phy_kernel_pml4", "phy_user_pml4", "COMM"]].itertuples(index=False))
@@ -172,8 +197,8 @@ if __name__ == "__main__":
     print("Adding colors to graph.")
     graph = color_graph(graph, pages)
 
-    print("Saving graph.")
-    nx.readwrite.write_graphml(graph, "../data_dump/known-pages.graphml")
+    print(f"Saving graph: {out_graph}")
+    nx.readwrite.write_graphml(graph, out_graph)
 
     # Below is some exploratory code, you will need a debugger / add prints to access these values.
 

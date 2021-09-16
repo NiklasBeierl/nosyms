@@ -41,10 +41,24 @@ def build_nx_graph(pages: Dict[int, PagingStructure]) -> nx.MultiDiGraph:
     return graph
 
 
-DUMP_NAME = "../data_dump/nokaslr.raw"
-
 if __name__ == "__main__":
-    with open(DUMP_NAME, "rb") as f:
+    import argparse
+    import pathlib
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "in_file",
+        help="Path to snapshot. Output files will have the same name with .json and .graphml as suffix.",
+        type=pathlib.Path,
+    )
+    args = parser.parse_args()
+    dump_path = args.in_file
+    if dump_path.suffix in {".json", ".graphml"}:
+        raise ValueError(f"Snapshot has {dump_path.suffix} as extension and would be overwritten by outputs.")
+    out_pages_path = dump_path.with_stem(dump_path.stem + "_all_pages").with_suffix(".json")
+    out_graph_path = out_pages_path.with_suffix(".graphml")
+
+    with open(dump_path, "rb") as f:
         mem = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
     pages = read_all(mem)
@@ -53,15 +67,15 @@ if __name__ == "__main__":
     for page in pages.values():
         page.entries = {offset: entry for offset, entry in page.entries.items() if entry.target < len(mem)}
 
-    print("Saving pages.")
-    snapshot = Snapshot(path=DUMP_NAME, pages=pages, size=len(mem))
-    with open("../data_dump/all_pages.json", "w") as f:
+    print(f"Saving pages: {out_pages_path}")
+    snapshot = Snapshot(path=str(dump_path.resolve()), pages=pages, size=len(mem))
+    with open(out_pages_path, "w") as f:
         f.write(snapshot.json())
 
     print("Building nx graph.")
     full_graph = build_nx_graph(pages)
 
-    print("Saving graph.")
-    nx.readwrite.write_graphml(full_graph, "../data_dump/all_pages.graphml")
+    print(f"Saving graph: {out_graph_path}")
+    nx.readwrite.write_graphml(full_graph, out_graph_path)
 
     print("Done")
