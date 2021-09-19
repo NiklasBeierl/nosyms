@@ -1,23 +1,27 @@
-from typing import Dict, Iterable, Tuple
+from typing import Dict, Iterable, Tuple, Union
 
 import networkx as nx
 
 from paging_detection import PageTypes, PagingStructure
 
 
-def add_task_info(graph: nx.Graph, process_info: Iterable[Tuple[int, int, str]]) -> nx.Graph:
+def add_task_info(graph: nx.Graph, process_info: Iterable[Union[Tuple[int, int, str], Tuple[int, str]]]) -> nx.Graph:
     """
     Add process information to nodes in a paging structure graph.
     :param graph: Paging structure graph
-    :param process_info: Tuples of kernel pml4 address, user pml4 address and a process name (comm)
+    :param process_info: 3-tuples of either: kernel pml4 address, user pml4 address and a process name (comm)
+    or 2- tuples of process pml4 address and process name (comm)
     :return: Copy of graph with task information added to nodes
     """
     graph = graph.copy()
-    for kernel_pml4, user_pml4, comm in process_info:
-        graph.nodes[kernel_pml4]["comm"] = graph.nodes[user_pml4]["comm"] = comm
-        graph.nodes[kernel_pml4]["type"] = "kernel"
-        graph.nodes[user_pml4]["type"] = "user"
-        graph.add_edge(kernel_pml4, user_pml4)
+    for proc in process_info:
+        kernel_pml4, user_pml4, comm = proc if len(proc) == 3 else (None,) + proc
+        graph.nodes[user_pml4]["comm"] = comm
+        if kernel_pml4 is not None:
+            graph.nodes[kernel_pml4]["comm"] = comm
+            graph.nodes[kernel_pml4]["type"] = "kernel"
+            graph.nodes[user_pml4]["type"] = "user"
+            graph.add_edge(kernel_pml4, user_pml4)
     return graph
 
 
