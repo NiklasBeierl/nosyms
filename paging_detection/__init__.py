@@ -73,7 +73,7 @@ class PagingEntry(BaseModel):
 
     @property
     def nx(self) -> bool:
-        return bool(self.value & 1 << 63)
+        return bool(self.value & (1 << 63))
 
     @property
     def valid_pml4e(self) -> bool:
