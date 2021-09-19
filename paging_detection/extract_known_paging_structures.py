@@ -88,7 +88,7 @@ def build_nx_graph(
                     continue
                 if entry.target < mem_size:
                     if data_page_nodes or not entry.target_is_data(designation):
-                        graph.add_edge(page_offset, entry.target, entry_offset)
+                        graph.add_edge(page_offset, entry.target, page_offset + entry_offset, offset=entry_offset)
                     else:
                         node = graph.nodes[page_offset]
                         node["data_pages"] = node.get("data_pages", 0) + 1
