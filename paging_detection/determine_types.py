@@ -49,35 +49,39 @@ def determine_possible_types(graph: nx.MultiDiGraph, pages: Dict[int, PagingStru
         page = pages[int(node)]
         # No dangling paging structures
         max_inbound = get_max_path(graph, node, max_len=len(PageTypes) - 1, direction="in")
-        possible_types = set(PAGE_TYPES_ORDERED[: max_inbound + 1])
+        poss_types = set(PAGE_TYPES_ORDERED[: max_inbound + 1])
 
         max_outbound = get_max_path(graph, node, max_len=len(PageTypes) - 1, direction="out")
 
         if max_outbound == 0:  # Can only be a data page
-            designations_avoided += len(possible_types)
-            possible_types = set()
+            designations_avoided += len(poss_types)
+            poss_types = set()
         elif max_outbound == 1:
-            possible_types.discard(PageTypes.PML4)  # PML4s never directly point to data pages
+            poss_types.discard(PageTypes.PML4)  # PML4s never directly point to data pages
             # PDP and PD can point to large pages, but there needs to be at least one qualifying entry
-            for page_type in possible_types & {PageTypes.PDP, PageTypes.PD}:
+            for page_type in poss_types & {PageTypes.PDP, PageTypes.PD}:
                 if not any(entry.target_is_data(page_type) for entry in page.entries.values()):
-                    possible_types.discard(page_type)
+                    poss_types.discard(page_type)
                     designations_avoided += 1
-        elif max_outbound == 2 and PageTypes.PDP in possible_types:
-            children_entries = [entry for suc in graph.successors(node) for entry in pages[int(suc)].entries.values()]
+        elif max_outbound == 2:
+            suc_entries = [entry for suc in graph.successors(node) for entry in pages[int(suc)].entries.values()]
+            # If none of the successors qualifies as a PDP pointing to a data page, the current page can't be a PML4
+            if PageTypes.PML4 in poss_types and not any(entry.target_is_data(PageTypes.PDP) for entry in suc_entries):
+                poss_types.discard(PageTypes.PML4)
+                designations_avoided += 1
             # If none of the successors qualifies as a PD pointing to a data page, the current page can't be a PDP
-            if not any(entry.target_is_data(PageTypes.PD) for entry in children_entries):
-                possible_types.discard(PageTypes.PDP)
+            if PageTypes.PDP in poss_types and not any(entry.target_is_data(PageTypes.PD) for entry in suc_entries):
+                poss_types.discard(PageTypes.PDP)
                 designations_avoided += 1
 
         # At least one valid entry under any assigned page_type
-        for page_type in possible_types & set(PAGE_TYPES_ORDERED[:-1]):  # PT entries are always valid
+        for page_type in poss_types & set(PAGE_TYPES_ORDERED[:-1]):  # PT entries are always valid
             if not any(entry.is_valid(page_type) for entry in page.entries.values()):
-                possible_types.remove(page_type)
+                poss_types.remove(page_type)
                 designations_avoided += 1
 
         for t in PageTypes:
-            graph.nodes[node][t] = t in possible_types
+            graph.nodes[node][t] = t in poss_types
 
     return graph
 
