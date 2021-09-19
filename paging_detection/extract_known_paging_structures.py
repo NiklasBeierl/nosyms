@@ -219,12 +219,4 @@ if __name__ == "__main__":
     types_summary = Counter((is_mapped[addr], *page.designations) for addr, page in pages.items())
     ambiguous_pages = sum(occ for desigs, occ in types_summary.items() if len(desigs) > 2)
 
-    out_of_bounds = defaultdict(set)
-    for address, page in pages.items():
-        for offset, entry in page.out_of_bounds_entries(len(mem)).items():
-            out_of_bounds[address].add((offset, entry.target))
-
-    out_of_bounds_entries = sum(len(entries) for entries in out_of_bounds.values())
-    out_of_bound_pages = sum(len(set(target for _, target in entries)) for entries in out_of_bounds.values())
-
 print("Done.")
