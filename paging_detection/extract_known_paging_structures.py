@@ -134,6 +134,9 @@ if __name__ == "__main__":
         help="Path to .csv containing task info. Use the pslist_with_pgds.PsListWithPGDs Vol3 plugin.",
         type=pathlib.Path,
     )
+    parser.add_argument(
+        "--kpti", help="Whether the snapshot is from a kernel with KPTI enabled.", action=argparse.BooleanOptionalAction
+    )
     parser.add_argument("kernel_pgd", help="Location of a pgd mapping all process pgds.", type=int)
 
     args = parser.parse_args()
@@ -150,22 +153,26 @@ if __name__ == "__main__":
     with open(dump_path, "rb") as f:
         mem = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
-    # https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/pgtable.h#L1168
-    # All top-level PAGE_TABLE_ISOLATION page tables are order-1 pages (8k-aligned and 8k in size).
-    # The kernel one is at the beginning 4k and the user one is in the last 4k.
-    # To switch between them, you just need to flip the 12th bit in their addresses.
-    task_info["phy_kernel_pml4"] = [  # Bit 12 cleared (kernel space)
-        translate(mem, kernel_pgd, (pgd & ~(1 << 12))) if pgd != -1 else -1 for pgd in task_info["active_mm->pgd"]
-    ]
-    task_info["phy_user_pml4"] = [  # Bit 12 set (user space)
-        translate(mem, kernel_pgd, (pgd | (1 << 12))) if pgd != -1 else -1 for pgd in task_info["active_mm->pgd"]
-    ]
-    task_info = task_info[task_info["phy_user_pml4"] != -1]
+    task_info = task_info[task_info["active_mm->pgd"] != -1]
 
     phy_pgds = []
-    for kernel, user in task_info[["phy_kernel_pml4", "phy_user_pml4"]].itertuples(index=False):
-        if user != -1:
+    if args.kpti:
+        # https://elixir.bootlin.com/linux/latest/source/arch/x86/include/asm/pgtable.h#L1168
+        # All top-level PAGE_TABLE_ISOLATION page tables are order-1 pages (8k-aligned and 8k in size).
+        # The kernel one is at the beginning 4k and the user one is in the last 4k.
+        # To switch between them, you just need to flip the 12th bit in their addresses.
+
+        task_info["phy_kernel_pml4"] = [  # Bit 12 cleared (kernel space)
+            translate(mem, kernel_pgd, (pgd & ~(1 << 12))) for pgd in task_info["active_mm->pgd"]
+        ]
+        task_info["phy_user_pml4"] = [  # Bit 12 set (user space)
+            translate(mem, kernel_pgd, (pgd | (1 << 12))) for pgd in task_info["active_mm->pgd"]
+        ]
+        for kernel, user in task_info[["phy_kernel_pml4", "phy_user_pml4"]].itertuples(index=False):
             phy_pgds.extend([kernel, user])
+    else:
+        task_info["pml4"] = [translate(mem, kernel_pgd, pgd) for pgd in task_info["active_mm->pgd"]]
+        phy_pgds.extend(task_info["pml4"])
 
     pages = read_paging_structures(mem, phy_pgds)
 
@@ -192,8 +199,9 @@ if __name__ == "__main__":
         oob_df.to_csv(out_oob_entries, index=False)
 
     print("Adding task info to PML4s in graph.")
-    graph = add_task_info(graph, task_info[["phy_kernel_pml4", "phy_user_pml4", "COMM"]].itertuples(index=False))
 
+    graph_cols = ["phy_kernel_pml4", "phy_user_pml4", "COMM"] if args.kpti else ["pml4", "COMM"]
+    graph = add_task_info(graph, task_info[graph_cols].itertuples(index=False))
     print("Adding colors to graph.")
     graph = color_graph(graph, pages)
 
