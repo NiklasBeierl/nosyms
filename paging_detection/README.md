@@ -15,7 +15,7 @@ All of the python scripts use argparse. You can invoke them with `--help`.
 Use the `pslist_with_pgds.PsListWithPGDs` Volatility3 plugin.
 ```bash
 cd path/to/nosyms
-vol -p volatility_plugins/ -f data/dump -r csv pslist_with_pgds.PsListWithPGDs  >> data/dump_pgds.csv
+vol -p volatility_plugins/ -f data/dump -r csv pslist_with_pgds.PsListWithPGDs > data/dump_pgds.csv
 ```
 Note: You need a profile matching the linux kernel running in the snapshot.
 
@@ -23,14 +23,14 @@ Note: You need a profile matching the linux kernel running in the snapshot.
 The last argument is the physical address of the PML4 used to translate `active_mm->pgd` of all the tasks in the snapshot.
 ```bash
 cd path/to/nosyms/paging_detection
-python3 extract_known_paging_structures.py ../data/dump ../data/dump_pgds.csv 39886848
+python3 extract_known_paging_structures.py --kpti ../data/dump ../data/dump_pgds.csv 39886848
 ```
 Produces:
 ```
 ../data/dump_known_pages.json
 ../data/dump_known_pages.graphml
 ```
-Note: Assumes that your snapshot comes from a linux OS with page table isolation.
+Pass `--kpti` or `--no-kpti` according to whether the snapshot comes from a kernel with page table isolation.
 
 ### Extract paging information for all pages 
 ```bash
@@ -54,6 +54,17 @@ Produces:
 ../data/dump_all_pages_with_types.json
 ../data/dump_all_pages_with_types.graphml
 ```
+### (Optinally) apply additional filters
+Point the script to the "all_pages_with_types" `.json` or `.graphml`, it will figure out the path of the other one automatically.
+```bash
+cd path/to/nosyms/paging_detection
+python3 filters.py ../data/dump_all_pages_with_types.json
+```
+Produces:
+```
+../data/dump_all_pages_with_types_filtered.json
+```
+
 ### Compare results
 Point it to the "prediction" and "ground truth" `.json`.
 It prints a table with some stats.

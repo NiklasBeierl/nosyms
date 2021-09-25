@@ -140,6 +140,14 @@ class PagingStructure(BaseModel):
     def valid_ptes(self) -> Dict[int, PagingEntry]:
         return self.entries
 
+    def __getitem__(self, item):
+        start = item.start
+        end = item.stop or PAGING_STRUCTURE_SIZE
+        entries = {
+            offset: PagingEntry(value=entry.value) for offset, entry in self.entries.items() if start <= offset < end
+        }
+        return PagingStructure(entries=entries, designations=set(self.designations))
+
     @classmethod
     def from_mem(cls, mem: ReadableMem, designations: Iterable[PageTypes]) -> "PagingStructure":
         assert len(mem) == PAGING_STRUCTURE_SIZE
