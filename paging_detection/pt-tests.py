@@ -408,4 +408,5 @@ def main():
     realitycheck(l4, reality[0], reality[1] | reality[2] | reality[3], PRINTDIFF)
 
 
-main()
+if __name__ == "__main__":
+    main()
