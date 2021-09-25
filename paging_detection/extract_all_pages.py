@@ -3,7 +3,7 @@ from typing import Dict
 
 import networkx as nx
 
-from paging_detection import PagingStructure, ReadableMem, PAGING_STRUCTURE_SIZE, Snapshot
+from paging_detection import PagingStructure, ReadableMem, PAGING_STRUCTURE_SIZE, Snapshot, max_page_addr
 
 
 def read_all(mem: ReadableMem) -> Dict[int, PagingStructure]:
@@ -17,15 +17,15 @@ def read_all(mem: ReadableMem) -> Dict[int, PagingStructure]:
     print("Reading all pages.")
     last_progress = 0
     for offset in range(0, len(mem), PAGING_STRUCTURE_SIZE):
-        if (prog := offset * 100 // len(mem)) != last_progress and prog % 5 == 0:
-            print(f"{prog}%")
+        if (prog := offset / len(mem)) != last_progress and prog % 5 == 0:
+            print(f"{prog:%}")
             last_progress = prog
 
         pages[offset] = PagingStructure.from_mem(mem[offset : offset + PAGING_STRUCTURE_SIZE], designations=[])
     return pages
 
 
-def build_nx_graph(pages: Dict[int, PagingStructure]) -> nx.MultiDiGraph:
+def build_nx_graph(pages: Dict[int, PagingStructure], max_paddr: int) -> nx.MultiDiGraph:
     """
     Build a networkx graph representing pages and their (hypothetical) paging entries in a snapshot.
     :param pages: Dict mapping physical address to pages
@@ -34,7 +34,8 @@ def build_nx_graph(pages: Dict[int, PagingStructure]) -> nx.MultiDiGraph:
     graph = nx.MultiDiGraph()
     for page_offset, page in pages.items():
         for entry_offset, entry in page.entries.items():
-            graph.add_edge(page_offset, entry.target, entry_offset)
+            if entry.target <= max_paddr:
+                graph.add_edge(page_offset, entry.target, entry_offset)
 
     graph.add_nodes_from(pages.keys())  # Adds "disconnected" pages. Mostly to avoid key errors.
 
@@ -63,19 +64,26 @@ if __name__ == "__main__":
 
     pages = read_all(mem)
 
-    print("Removing out of bound entries.")
+    max_paddr = max_page_addr(len(mem))
+
+    print("Building nx graph.")
+    full_graph = build_nx_graph(pages, max_paddr=max_paddr)
+
+    print("Marking pages with oob entries.")
+    for offset, page in pages.items():
+        full_graph.nodes[offset]["has_oob_entries"] = any(entry.target > max_paddr for entry in page.entries.values())
+
+    print(f"Saving graph: {out_graph_path}")
+    nx.readwrite.write_graphml(full_graph, out_graph_path)
+
+    # Keeping oob entries significantly increases the size of th pages json file.
+    print("Removing out of bound entries from page data.")
     for page in pages.values():
-        page.entries = {offset: entry for offset, entry in page.entries.items() if entry.target < len(mem)}
+        page.entries = {offset: entry for offset, entry in page.entries.items() if entry.target <= max_paddr}
 
     print(f"Saving pages: {out_pages_path}")
     snapshot = Snapshot(path=str(dump_path.resolve()), pages=pages, size=len(mem))
     with open(out_pages_path, "w") as f:
         f.write(snapshot.json())
-
-    print("Building nx graph.")
-    full_graph = build_nx_graph(pages)
-
-    print(f"Saving graph: {out_graph_path}")
-    nx.readwrite.write_graphml(full_graph, out_graph_path)
 
     print("Done")

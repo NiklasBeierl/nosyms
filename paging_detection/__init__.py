@@ -60,6 +60,9 @@ class PageTypes(Enum):
         return self.value
 
 
+PAGE_TYPES_ORDERED = tuple(PageTypes)
+
+
 class PagingEntry(BaseModel):
     value: int
 
@@ -163,3 +166,16 @@ class Snapshot(BaseModel):
     path: str
     pages: Dict[int, PagingStructure]
     size: int
+
+
+def max_page_addr(mem_size: int) -> int:
+    max_phy_addr = mem_size - 1
+    return max_phy_addr - (max_phy_addr % PAGING_STRUCTURE_SIZE)
+
+
+def next_type(t: PageTypes) -> PageTypes:
+    return PAGE_TYPES_ORDERED[PAGE_TYPES_ORDERED.index(t) + 1]
+
+
+def prev_type(t: PageTypes) -> PageTypes:
+    return PAGE_TYPES_ORDERED[PAGE_TYPES_ORDERED.index(t) - 1]

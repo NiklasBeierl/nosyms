@@ -3,9 +3,7 @@ from typing import Dict, Literal, Union
 
 import networkx as nx
 
-from paging_detection import Snapshot, PageTypes, PagingStructure
-
-PAGE_TYPES_ORDERED = tuple(PageTypes)
+from paging_detection import Snapshot, PageTypes, PagingStructure, PAGE_TYPES_ORDERED
 
 
 def get_max_path(graph: nx.MultiDiGraph, node, max_len: int, direction: Union[Literal["in"], Literal["out"]]) -> int:
@@ -74,6 +72,8 @@ def determine_possible_types(graph: nx.MultiDiGraph, pages: Dict[int, PagingStru
                 poss_types.discard(PageTypes.PDP)
                 designations_avoided += 1
 
+        # WARNING: THIS CODE DOES NOT CONSIDER The "possible types" of other pages!
+
         # At least one valid entry under any assigned page_type
         for page_type in poss_types & set(PAGE_TYPES_ORDERED[:-1]):  # PT entries are always valid
             if not any(entry.is_valid(page_type) for entry in page.entries.values()):
@@ -83,6 +83,8 @@ def determine_possible_types(graph: nx.MultiDiGraph, pages: Dict[int, PagingStru
         for t in PageTypes:
             graph.nodes[node][t] = t in poss_types
 
+    avoided_perc = designations_avoided / (graph.number_of_nodes() * len(PageTypes))
+    print(f"Avoided {designations_avoided} designations. ({avoided_perc:%})")
     return graph
 
 
@@ -106,7 +108,7 @@ if __name__ == "__main__":
     out_graph_path = out_pages_path.with_suffix(".graphml")
 
     print(f"Loading graph: {in_graph_path}")
-    graph = nx.read_graphml(in_graph_path, force_multigraph=True)
+    graph: nx.DiGraph = nx.read_graphml(in_graph_path, force_multigraph=True)
 
     print(f"Loading pages: {in_pages_path}")
     with open(in_pages_path) as f:
