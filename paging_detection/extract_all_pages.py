@@ -31,33 +31,36 @@ def read_all(mem: ReadableMem, path: str) -> Dict[int, PagingStructure]:
             last_progress = prog
         page = PagingStructure.from_mem(mem[offset : offset + PAGING_STRUCTURE_SIZE], designations=[])
 
-        present, oob, bit7, not_present = maybepte(dumpfile, maxpfn, pageno, None)
-
+        """
         in_bounds = {o: e for o, e in page.entries.items() if e.target <= max_paddr and e.target != 0}
-
         oob_es = len(page.entries) - len(in_bounds)
         bit7_es = len({o: e for o, e in in_bounds.items() if e.value & (1 << 7)})
         present_es = len(in_bounds) - bit7_es
+        """
+        present_my_l = bool(
+            all((e.target <= max_paddr) and (e.target != 0) and (not e.value & (1 << 7)) for e in page.entries.values())
+            and len(page.entries)
+        )
 
-        if present != present_es or oob != oob_es or bit7 != bit7_es or not_present != (512 - len(page.entries)):
-            print("Error!")
-
-        if oob == 0:
-            alt_no_oob += 1
-
-        if (bit7 + oob) == 0:
+        present = maybepte(dumpfile, maxpfn, pageno, None)
+        if present > 0:
             alt_pages += 1
+
+        if present_my_l != (present != 0):
+            print("Error!")
 
         pages[offset] = page
 
-    pages_no_oob = sum(1 for page in pages.values() if all(e.target <= max_paddr for e in page.entries.values()))
+    # pages_no_oob = sum(1 for page in pages.values() if all(e.target <= max_paddr for e in page.entries.values()))
     pages_no_oob_noz = sum(
         1
         for page in pages.values()
-        if all((e.target <= max_paddr) and (e.target != 0) and (not e.value & (1 << 7)) for e in page.entries.values())
+        if page.entries
+        and all((e.target <= max_paddr) and (e.target != 0) and (not e.value & (1 << 7)) for e in page.entries.values())
     )
 
     assert pages_no_oob_noz == alt_pages
+    print(f" Qualifying pts: {alt_pages}")
 
     return pages
 
