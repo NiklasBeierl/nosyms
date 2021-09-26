@@ -69,7 +69,7 @@ class PagingEntry(BaseModel):
 
     @property
     def target(self) -> int:
-        return self.value & 0x001FFFFFFFFFF000
+        return self.value & 0x000FFFFFFFFFF000
 
     @property
     def nx(self) -> bool:
