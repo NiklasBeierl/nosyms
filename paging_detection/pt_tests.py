@@ -40,6 +40,7 @@ FILTERPAIRS = 0
 # valus: how many times a specific mapping has to exist
 FILTERKMSIM = 5
 
+
 ### some statistics with vmneu2.dump (FILTERx1ff, FILTERFLAGS)
 ### 0,0 Correct: 66 PTE/96044 nonPTE, missed: 0, false positives: 145
 ### 1,0 Correct: 66 PTE/96088 nonPTE, missed: 0, false positives: 101
@@ -87,6 +88,7 @@ if False:
 
 good = dict.fromkeys(good)
 
+
 # Goal: find likely candidates for top level pgd
 
 # Possibly a paging data structure (pds) if
@@ -107,35 +109,42 @@ good = dict.fromkeys(good)
 # (We exclude pfn 0 here as this (almost) always is a false positive)
 #
 # returns the number of entries that look like good pds entries (0 if something looks bad)
-def maybepte(page, curlevel, verbose=False):
-    somepresent = 0
+def maybepte(dumpfile, maxpfn, page, curlevel, verbose=False):
+    """
+    :param curlevel:
+    """
+    somepresent = oob = bit7 = not_present = 0
     seenflags = {}
     for i in range(512):
         pte = dumpfile[page * 512 + i]
         present = np.bitwise_and(pte, np.uint64(1))
         if not present:
+            not_present += 1
             continue
         pfn = int(np.bitwise_and(pte, np.uint64(0x000FFFFFFFFFF000)).astype(int)) >> 12
         if (pfn <= 0 or pfn >= maxpfn) and not pfn in good:
             if verbose:
                 print("%x:%x pfn %x out of range (%x)" % (page, i, pfn, pte))
-            return 0
+            oob += 1
+            continue
+            # return 0
         flags = int(np.bitwise_and(pte, np.uint64(0xFFF)).astype(int))
         seenflags[flags] = 1
-        size = np.bitwise_and(pte, np.uint64(128))
+        size = np.bitwise_and(pte, np.uint64(128))  # is bit 7 set?
         if curlevel == None:
             if size > 0:
                 # PT entries (lowest level) have mandatory size bit 0
                 if verbose:
                     print("%x:%x pfn %x size bit is 1" % (page, i, pfn))
-                return 0
+                bit7 += 1
+                # return 0
             else:
                 somepresent += 1
-        else:
+        else:  # Should never get here
             if size == 0:
-                if (curlevel >> pfn) & 1 == 1:
+                if (curlevel >> pfn) & 1 == 1:  # Check if lower level page is targeted
                     somepresent += 1
-            else:
+            else:  # Points to data page
                 somepresent += 1
     if FILTERALLFLAGS > 0 and len(seenflags) > FILTERALLFLAGS:
         if verbose:
@@ -143,7 +152,7 @@ def maybepte(page, curlevel, verbose=False):
         return 0
     if verbose and (somepresent == 0):
         print("%x: no present pages found" % page)
-    return somepresent
+    return somepresent, oob, bit7, not_present
 
 
 # just for testing: show all present entries of a page
@@ -326,9 +335,10 @@ def main():
     good = 0
     l1 = 0
     for page in range(maxpfn):
-        if maybepte(page, None) > 0:
+        if maybepte(dumpfile, maxpfn, page, None) > 0:
             good += 1
             l1 |= 1 << page
+    print(f"potential PTs {bin(l1).count('1')}")
     print("L1 Good: ", good, " out of ", maxpfn)
     realitycheck(l1, reality[3])
 
