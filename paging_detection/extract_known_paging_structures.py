@@ -177,7 +177,7 @@ if __name__ == "__main__":
     pages = read_paging_structures(mem, phy_pgds)
 
     print(f"Saving pages: {out_pages}")
-    snapshot = Snapshot(path=str(dump_path.resolve), pages=pages, size=len(mem))
+    snapshot = Snapshot(path=str(dump_path.resolve()), pages=pages, size=len(mem))
     with open(out_pages, "w") as f:
         f.write(snapshot.json())
 
