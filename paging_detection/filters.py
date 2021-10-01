@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 from typing import Dict
 
@@ -43,6 +44,36 @@ def prune_designations(graph: nx.MultiDiGraph, pages: Dict[int, PagingStructure]
     return removed
 
 
+def pml4_kernel_mapping_similarity(pages: Dict[int, PagingStructure]) -> Dict[int, float]:
+    """
+    Calculates a likelihood of actually being a pml4 for every candidate pml4 based on how many entries
+    it shares with other pml4s in the "kernel" end of the address space.
+    """
+    candidate_pml4s = [offset for offset, page in pages.items() if PageTypes.PML4 in page.designations]
+
+    entries: Dict[int, set] = {}
+
+    entry_counts = defaultdict(lambda: 0)
+
+    for page_offset in candidate_pml4s:
+        page = pages[page_offset]
+        entries[page_offset] = {
+            (entry_offset, entry.value) for entry_offset, entry in page.entries.items() if entry_offset > 2048
+        }
+        for entry in entries[page_offset]:
+            entry_counts[entry] += 1
+
+    max_occurence = max(entry_counts.values())
+    entry_scores = {entry: occurences / max_occurence for entry, occurences in entry_counts.items()}
+
+    page_scores = {offset: sum(entry_scores[entry] for entry in entries) for offset, entries in entries.items()}
+    max_score = max(page_scores.values())
+    page_scores = {offset: score for offset, score in sorted(page_scores.items(), key=lambda tup: tup[1], reverse=True)}
+    page_scores_normed = {offset: score / max_score for offset, score in page_scores.items()}
+
+    return page_scores_normed
+
+
 if __name__ == "__main__":
     import argparse
     import pathlib
@@ -75,6 +106,7 @@ if __name__ == "__main__":
     initial_prune = prune_designations(graph, pages)
     print(f"Initial prune removed {initial_prune} designations.")
 
+    # Discarding entries to page 0
     zero_entries = graph.in_degree["0"]
     page_zero = graph.nodes["0"]
     graph.remove_node("0")
@@ -84,6 +116,7 @@ if __name__ == "__main__":
     no_zero = prune_designations(graph, pages)
     print(f"No-zero prune removed {initial_prune} designations.")
 
+    # Discarding pages with invalid entries
     excluded = 0
     for node in graph.nodes.values():
         for page_type in PageTypes:
@@ -94,6 +127,7 @@ if __name__ == "__main__":
     pruned = prune_designations(graph, pages)
     print(f"Prune removed {pruned} designations.")
 
+    # Discarding pages with OOB entries
     excluded = 0
     for node in graph.nodes.values():
         for page_type in PageTypes:
@@ -104,37 +138,28 @@ if __name__ == "__main__":
     pruned = prune_designations(graph, pages)
     print(f"Prune removed {pruned} designations.")
 
+    # Applying the "kernel mapping similarity" filter
+
     print("Transferring designations to snapshot data")
     for offset, node in graph.nodes.items():
         pages[int(offset)].designations = set(type for type in PageTypes if node[str(type)])
 
-    """ 
-    kernel_only_pages = {offset: page[2048:] for offset, page in snapshot.pages.items()}
+    pml4_scores = pml4_kernel_mapping_similarity(pages)
+    removed = 0
+    for page_offset, score in pml4_scores.items():
+        if score < 0.8:
+            removed += 1
+            graph.nodes[str(page_offset)][str(PageTypes.PML4)] = False
 
-    kernel_ends = defaultdict(list)
+    print(f"Removed {removed} PML4 designations based on kernel part similarities.")
+    pruned = prune_designations(graph, pages)
+    print(f"Prune removed {pruned} designations.")
 
-    for offset, page in kernel_only_pages.items():
-        if PageTypes.PML4 in page.designations:
-            kernel_ends[frozenset((offset, entry.value) for offset, entry in page.entries.items())].append(offset)
+    # Syncing and saving
 
-    khead_counts = {khead: len(pages) for khead, pages in kernel_ends.items()}
-    khead_relevant = {khead: len(pages) for khead, pages in kernel_ends.items() if len(pages) >= 5}
-
-    removed = sum(len(pages) for khead, pages in kernel_ends.items() if len(pages) < 5)
-    for end, pages in kernel_ends.items():
-        if len(pages) < 5:
-            for po in pages:
-                snapshot.pages[po].designations.discard(PageTypes.PML4)
-    print(f"Filtered {removed} PML4s with less than 5 siblings.")
-
-    PML4_ENTRY_LIMIT = 10
-    filtered_large_pml4s = 0
-    for page in snapshot.pages.values():
-        if PageTypes.PML4 in page.designations and len(page.valid_pml4es) > PML4_ENTRY_LIMIT:
-            page.designations.remove(PageTypes.PML4)
-            filtered_large_pml4s += 1
-    print(f"Filtered {filtered_large_pml4s} PML4s with more than {PML4_ENTRY_LIMIT} entries.")
-    """
+    print("Transferring designations to snapshot data")
+    for offset, node in graph.nodes.items():
+        pages[int(offset)].designations = set(type for type in PageTypes if node[str(type)])
 
     print(f"Saving pages: {out_pages_path}")
     with open(out_pages_path, "w") as f:
